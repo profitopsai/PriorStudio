@@ -60,14 +60,14 @@ pip install priorstudio                                       # the CLI
 priorstudio validate priors/linear-regression/
 
 # 4. Sample 3 tasks from it to see what training looks like
-priorstudio sample priors/linear-regression/prior.yaml --seeds 3
+priorstudio sample . linear-regression --count 3 | jq .samples[0].a_true,.samples[0].b_true
 
-# 5. Train a small PFN locally — 5–10 min on CPU. Needs PyTorch.
+# 5. Train a small PFN locally — ~1 min on CPU. Needs PyTorch.
 pip install "priorstudio-core[torch]"
 python examples/01_linear_regression.py
 ```
 
-The training loop emits one JSON line per step on stdout so you can pipe it through `jq` or watch in real time. Final output: a checkpoint at `checkpoint/model.pt` plus a metrics dict that — for the linear-regression prior — matches the analytic Bayesian posterior mean within numerical noise. That's the headline test: a transformer trained on synthetic random linear functions does Bayesian inference correctly on data it has never seen, in a single forward pass.
+The example trains a 3-layer transformer on synthetic Bayesian linear regression tasks for 2000 steps (~1 min CPU). On 50 fresh held-out tasks it beats a mean baseline by ~100× and lands within ~1.3× of the closed-form OLS solution — i.e. it does Bayesian inference *from the context alone, in a single forward pass*, without ever inverting a covariance matrix at inference time. The training loop also emits one JSON line per step on stdout (set `PRIORSTUDIO_JSON_PROGRESS=1`) for piping through `jq` or driving a live UI. Output: `checkpoint/model.pt` + the final metrics printed at the end.
 
 ---
 
