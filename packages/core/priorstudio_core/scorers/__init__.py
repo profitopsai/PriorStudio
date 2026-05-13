@@ -17,10 +17,14 @@ To add a new scorer:
 from __future__ import annotations
 
 from .base import DatasetScorer, ScorerResult
+from .breast_cancer_vs_logreg import BreastCancerVsLogReg
+from .in_context_regression_ols import InContextRegressionVsOLS
 from .m4_monthly_forecast import M4MonthlyForecast
 
 BUILTIN_SCORERS: dict[str, DatasetScorer] = {
     "m4_monthly_mse": M4MonthlyForecast(),
+    "in_context_regression_ols": InContextRegressionVsOLS(),
+    "breast_cancer_vs_logreg": BreastCancerVsLogReg(),
 }
 
 __all__ = ["BUILTIN_SCORERS", "DatasetScorer", "ScorerResult"]

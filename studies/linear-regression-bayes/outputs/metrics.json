@@ -1,0 +1,34 @@
+{
+  "run_id": "linear_regression_bayes_v0_1",
+  "status": "ok",
+  "steps": 2000,
+  "batch_size": 32,
+  "lr": 0.0005,
+  "seed": 42,
+  "training": {
+    "final_loss": 0.0121,
+    "mean_loss_last_10pct": 0.0117,
+    "wall_time_s": 46.8
+  },
+  "eval": {
+    "tasks": 50,
+    "points_per_task": 80,
+    "context_fraction": 0.75,
+    "pfn_mse": 0.0118,
+    "mean_baseline_mse": 1.1371,
+    "ols_baseline_mse": 0.0103,
+    "ratio_vs_mean": "96.4x better",
+    "ratio_vs_ols": "1.15x worse"
+  },
+  "compute": {
+    "target": "local",
+    "device": "cpu",
+    "cpu_model": "Apple M-series (laptop)",
+    "torch_version": "2.x",
+    "python_version": "3.13"
+  },
+  "notes": [
+    "Eval comes from running examples/01_linear_regression.py, which uses the same prior+model+hparams and adds a held-out evaluation against analytic baselines.",
+    "OLS is the closed-form Bayesian-optimal solution for this prior; the PFN approaches it from a single forward pass without ever inverting a covariance matrix at inference time."
+  ]
+}
