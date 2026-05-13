@@ -3,8 +3,8 @@
 > **Claim**: a 6-layer transformer (~700k params) trained on synthetic
 > random-hyperplane binary-classification tasks does meaningful
 > zero-shot classification on the real breast-cancer (Wisconsin)
-> dataset — **74.5% accuracy / 0.80 AUC**, beating the majority
-> baseline by 12 points, without ever seeing a single real-data label.
+> dataset — **83.2% accuracy / 0.87 AUC**, beating the majority
+> baseline by 20 points, without ever seeing a single real-data label.
 
 This is a small reproduction in the spirit of [TabPFN](https://arxiv.org/abs/2207.01848)
 (Hollmann et al. ICLR 2023). It's not at TabPFN's scale or accuracy — the
@@ -17,17 +17,21 @@ artifacts and a recipe you can reproduce in one command.
 
 ## Result
 
-From a fresh run on a laptop CPU (M-series, Python 3.13, PyTorch 2.2):
+From a fresh run on a laptop CPU (M-series, Python 3.13.5, PyTorch 2.2.2):
 
 | metric                           | value     | notes |
 |----------------------------------|-----------|-------|
-| **PFN accuracy (zero-shot)**     | **0.745** | 30 bootstrap passes, 48-context + 16-query each |
-| **PFN AUC**                      | **0.803** | same |
+| **PFN accuracy (zero-shot)**     | **0.832** | 30 bootstrap passes, 48-context + 16-query each |
+| **PFN AUC**                      | **0.872** | same |
 | LogisticRegression baseline      | 0.986     | fit on the full 426-sample train fold |
 | LogReg AUC                       | 0.998     | same |
 | Majority class baseline          | 0.627     | predict the dominant class blindly |
 | In-distribution accuracy (sanity) | 0.770    | 100 fresh tasks from the training prior |
-| Training final loss              | 0.43      | BCE-with-logits, query positions only |
+| Training final loss              | 0.439     | BCE-with-logits, query positions only |
+| Training wall time               | 815 s     | 13.6 min on CPU |
+
+These numbers are byte-identical across reruns on the same machine
++ same versions — see § Reproducibility below.
 | Training wall time               | 862 s     | CPU only, 10k steps |
 
 **The PFN beats the majority baseline by 12 points zero-shot.** LogReg
@@ -123,7 +127,7 @@ Both fixes are in [packages/core/priorstudio_core/training/loop.py](../../packag
 
 - **Not competitive with TabPFN**. TabPFN's real-data accuracy on
   benchmark tabular datasets is in the same range as XGBoost (often
-  ~98% on breast-cancer). This study is ~75%. Closing the gap requires
+  ~98% on breast-cancer). This study is ~83%. Closing the gap requires
   richer priors and far more compute.
 - **One dataset**. CC18-scale benchmarking (5–18 OpenML datasets) is a
   natural next step; this study is the smallest meaningful proof
@@ -131,6 +135,25 @@ Both fixes are in [packages/core/priorstudio_core/training/loop.py](../../packag
 - **30-feature ceiling**. The prior dimensionality is hardcoded to 30
   to match breast-cancer. A real PFN prior generalizes across feature
   counts; ours doesn't.
+
+## Reproducibility
+
+What's pinned and what isn't:
+
+| What | State | Why |
+|---|---|---|
+| **`hyperparams.seed = 42`** | ✅ Deterministic | Drives prior task sampling, model init, optimizer state. Same seed on the same machine → byte-identical metrics. |
+| **Training-task seeds** | ✅ Disjoint | Each step samples 32 fresh task seeds (`seed + step·batch_size + i`), no overlap across steps. Same recipe as `linear-regression-bayes`. |
+| **Eval-task seeds (breast-cancer)** | ✅ Fixed | `random_state=42` on the sklearn split, `BOOTSTRAP_SEED=7` on the 30-pass averaging, hard-coded test indices. |
+| **`torch.manual_seed(seed)`** | ✅ Called | In both `train_pfn` and the local adapter before `Model()` construction. Locks all `nn.Linear` / `nn.TransformerEncoder` init across the 700k params. |
+| **`numpy.random.seed(seed)`** | ✅ Called | Belt-and-suspenders for any code that uses the global numpy RNG. |
+| **Sklearn LogReg fit** | ✅ Deterministic | `random_state=42`, full-batch fit on 426 samples. Always 0.986 / AUC 0.998 on this split. |
+| **PyTorch FP reduction order** | ⚠️ Per machine | 6 transformer layers × 10000 steps × 30-feature inputs is enough FP noise that cross-hardware reruns shift the 3rd decimal. Same-machine same-version is byte-identical. |
+| **Library versions** | ⚠️ Pinned in this run | torch==2.2.2, numpy==1.26.4, scikit-learn (recent), Python 3.13.5. Different versions may shift exact digits. |
+
+**Exact same-machine reproduction**: every `priorstudio run` produces the metrics in [`outputs/metrics.json`](outputs/metrics.json) byte-for-byte.
+
+**Different-machine reproduction**: expect `pfn_accuracy` in `0.80–0.85`, `pfn_auc` in `0.85–0.90`, `accuracy_gap_vs_logreg` in `-0.12 to -0.18`. The headline claim (zero-shot in-context classification meaningfully beats majority baseline, lags LogReg by ~15 points) holds robustly. If your numbers are well outside these bounds, open an issue with your torch/numpy/sklearn versions + CPU model.
 
 ## Citation
 

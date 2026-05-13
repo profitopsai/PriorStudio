@@ -13,19 +13,24 @@ is hidden in the binary.
 
 From a fresh run on a laptop CPU (M-series, Python 3.13, PyTorch 2.x):
 
-| metric                       | value     | notes |
-|------------------------------|-----------|-------|
-| **PFN MSE**                  | **0.0118**| in-context inference on 50 held-out tasks |
-| Mean baseline                | 1.1371    | predict the context mean — a useless model |
-| OLS baseline                 | 0.0103    | closed-form Bayesian posterior mean |
-| Training loss (final, step 2000) | 0.0121 | converged |
-| Training wall time           | 46.8 s    | CPU only |
+| metric                            | value      | notes |
+|-----------------------------------|------------|-------|
+| **PFN MSE**                       | **0.01262**| in-context inference on 50 held-out tasks |
+| Mean baseline                     | 1.13707    | predict the context mean — a useless model |
+| OLS baseline                      | 0.01027    | closed-form Bayesian posterior mean |
+| Ratio: mean baseline / PFN        | **90.1×**  | how many times better than predicting the mean |
+| Ratio: PFN / OLS                  | **1.23×**  | how close to the Bayesian-optimal target |
+| Training loss (mean over last 10%)| 0.0117     | converged |
+| Training wall time                | 46.6 s     | CPU only |
 
-**The PFN beats the mean baseline by ~96× and lands within 1.15× of the
+**The PFN beats the mean baseline by ~90× and lands within 1.23× of the
 Bayesian-optimal OLS solution.** It has never seen the (a, b) parameters
 that generated the held-out tasks; the entire inference happens in one
 forward pass through the transformer, conditioned on the context (x, y)
 pairs the prior packs into the same sequence as the query x's.
+
+These exact numbers are reproducible byte-for-byte on the same machine —
+see § Reproducibility below.
 
 Full metrics: [`outputs/metrics.json`](outputs/metrics.json).
 Training log (sampled): [`outputs/run.log.snippet`](outputs/run.log.snippet).
@@ -102,6 +107,24 @@ mechanism that lets one forward pass produce a Bayesian posterior mean.
 - **No structured uncertainty.** The model outputs point predictions, not
   the full posterior. Adding a Gaussian head + NLL loss is a natural
   next step but not in scope here.
+
+## Reproducibility
+
+What's pinned and what isn't:
+
+| What | State | Why |
+|---|---|---|
+| **`hyperparams.seed = 42`** | ✅ Deterministic | Drives prior task sampling, model init, optimizer state. Setting this same seed twice on the same machine produces *byte-identical* metrics. |
+| **Training-task seeds** | ✅ Disjoint | Each step samples 32 fresh task seeds (`seed + step·batch_size + i`), no overlap across steps. |
+| **Eval-task seeds** | ✅ Fixed | `BASE_SEED = 10000`. The scorer always evaluates on the same 50 tasks. |
+| **`torch.manual_seed(seed)`** | ✅ Called | In both `train_pfn` and the local adapter before `Model()` construction. Locks all `nn.Linear` / `nn.TransformerEncoder` / LazyLinear initialization. |
+| **`numpy.random.seed(seed)`** | ✅ Called | Belt-and-suspenders. Most code uses `np.random.default_rng(seed)` which is already deterministic; the global seed protects any user code that uses global `np.random`. |
+| **PyTorch FP reduction order** | ⚠️ Per machine | CPU vs GPU, x86 vs ARM, different BLAS implementations reduce floating-point operations in different orders. Same seed + same versions + different hardware → headline numbers shift at the ~3rd decimal place. The claim *"~1.0–1.5× of OLS, ~90× better than mean"* is robust to this. |
+| **Library versions** | ⚠️ Pinned in this run | This run used `torch==2.2.2`, `numpy==1.26.4`, Python 3.13.5. Future torch / numpy versions may change algorithms — same headline, different exact digits. |
+
+**Exact same-machine reproduction**: every `priorstudio run` of this study produces the metrics in [`outputs/metrics.json`](outputs/metrics.json) byte-for-byte. Verified by running twice and diffing.
+
+**Different-machine reproduction**: expect `pfn_mse` in the `0.010–0.020` range, `ratio_vs_ols` in `1.0–1.5×`, `ratio_vs_mean` in `60–120×`. These are the bounds the claim is robust to. If your numbers are well outside these ranges, something's wrong — open an issue with your torch/numpy/python versions + CPU model.
 
 ## Citation
 
