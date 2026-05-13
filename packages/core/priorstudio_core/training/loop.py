@@ -163,6 +163,27 @@ def train_pfn(
     lr = float(hp.get("lr", 1e-4))
     seed = int(hp.get("seed", 42))
 
+    # Seed *all* sources of randomness as early as possible. This makes
+    # same-machine, same-version runs byte-identical:
+    #   - torch    → controls Linear / TransformerEncoder default init
+    #                AND LazyLinear's first-forward init AND any other
+    #                stochastic torch ops.
+    #   - numpy    → priors use np.random.default_rng(seed) per-call
+    #                (already deterministic), but seeding global numpy
+    #                here protects any scorer / user code that uses
+    #                global np.random.
+    # Cross-machine / cross-version determinism is *not* guaranteed —
+    # see study READMEs' "Reproducibility" section.
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    try:
+        import numpy as _np
+
+        _np.random.seed(seed)
+    except ImportError:
+        pass
+
     _emit(
         "start",
         steps=steps,

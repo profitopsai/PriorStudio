@@ -79,6 +79,19 @@ class LocalAdapter(ComputeAdapter):
                 return {"status": "error", "reason": f"model.yaml not found at {model_yaml}"}
             model_spec = load_model(model_yaml)
 
+            # Seed torch BEFORE constructing the model so every block's
+            # default-init (nn.Linear / nn.TransformerEncoder weights, etc.)
+            # is deterministic per the run's `hyperparams.seed`. train_pfn
+            # re-seeds again inside its own scope for LazyLinear / any later
+            # stochastic ops — these two seedings are independent and both
+            # needed for end-to-end determinism on the same machine.
+            try:
+                import torch as _torch
+
+                _torch.manual_seed(int(run.hyperparams.get("seed", 42)))
+            except ImportError:
+                pass
+
             try:
                 model = Model(model_spec)
             except KeyError as e:
