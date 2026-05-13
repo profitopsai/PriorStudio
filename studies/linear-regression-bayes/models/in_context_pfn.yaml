@@ -30,7 +30,7 @@ blocks:
 
 output_heads:
   - name: pred_y
-    task: forecast
+    task: regression
 
 citations:
   - mueller2022pfn

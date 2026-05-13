@@ -14,7 +14,9 @@ model:
   id: in_context_pfn
   version: 0.1.0
 
-evals: []
+evals:
+  - id: in_context_regression_ols
+    version: 0.1.0
 
 hyperparams:
   optimizer: adamw

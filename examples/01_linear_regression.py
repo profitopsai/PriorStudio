@@ -130,7 +130,7 @@ def build_model() -> Model:
             ),
             BlockConfig(type="scalar_head", config={"d_model": 64, "d_out": 1}),
         ],
-        output_heads=[OutputHead(name="pred_y", task="forecast")],
+        output_heads=[OutputHead(name="pred_y", task="regression")],
     )
     return Model(spec)
 
