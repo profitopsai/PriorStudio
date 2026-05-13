@@ -39,9 +39,9 @@ from typing import Any
 import numpy as np
 from priorstudio_core import Prior, register_prior
 
-D_FEATURES = 30           # matches sklearn.datasets.load_breast_cancer()
+D_FEATURES = 30  # matches sklearn.datasets.load_breast_cancer()
 CTX_FRAC = 0.75
-TEMPERATURE = 2.0         # sigmoid sharpness of the decision boundary
+TEMPERATURE = 2.0  # sigmoid sharpness of the decision boundary
 
 
 @register_prior("random_binary_classification")
@@ -95,8 +95,8 @@ class RandomBinaryClassificationPrior(Prior):
         seq = np.concatenate([ctx_tok, q_tok], axis=0).astype(np.float32)
 
         return {
-            "X": seq,             # (N, D+2)
-            "labels": l_q,        # (n_query,) — targets at query positions only
+            "X": seq,  # (N, D+2)
+            "labels": l_q,  # (n_query,) — targets at query positions only
             "n_ctx": n_ctx,
             "w_true": w,
             "b_true": b,

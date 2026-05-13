@@ -74,9 +74,9 @@ class BayesianLinearPrior(Prior):
         seq = np.concatenate([ctx_tok, q_tok], axis=0).astype(np.float32)
 
         return {
-            "X": seq,         # (N, 3) — packed (x, y_or_0, is_ctx) tokens
-            "y": y_q,         # (n_query,) — targets for query positions only
-            "n_ctx": n_ctx,   # boundary the default step uses to slice logits
+            "X": seq,  # (N, 3) — packed (x, y_or_0, is_ctx) tokens
+            "y": y_q,  # (n_query,) — targets for query positions only
+            "n_ctx": n_ctx,  # boundary the default step uses to slice logits
             "a_true": a,
             "b_true": b,
         }
