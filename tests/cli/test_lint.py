@@ -6,14 +6,18 @@ from priorstudio.scaffold import scaffold_project
 
 def test_template_lints_clean(tmp_path: Path):
     target = tmp_path / "demo-fm"
-    scaffold_project(target=target, project_name="demo-fm", description="A test project.", org="acme")
+    scaffold_project(
+        target=target, project_name="demo-fm", description="A test project.", org="acme"
+    )
     errors = lint_project(target)
     assert errors == [], f"template should lint clean, got: {errors}"
 
 
 def test_lint_catches_unknown_prior_in_run(tmp_path: Path):
     target = tmp_path / "demo-fm"
-    scaffold_project(target=target, project_name="demo-fm", description="A test project.", org="acme")
+    scaffold_project(
+        target=target, project_name="demo-fm", description="A test project.", org="acme"
+    )
 
     run_yaml = target / "runs" / "example_run.yaml"
     text = run_yaml.read_text().replace("example_linear_scm", "ghost_prior")
@@ -25,7 +29,9 @@ def test_lint_catches_unknown_prior_in_run(tmp_path: Path):
 
 def test_lint_catches_dir_id_mismatch(tmp_path: Path):
     target = tmp_path / "demo-fm"
-    scaffold_project(target=target, project_name="demo-fm", description="A test project.", org="acme")
+    scaffold_project(
+        target=target, project_name="demo-fm", description="A test project.", org="acme"
+    )
 
     prior_dir = target / "priors" / "example_linear_scm"
     new_dir = target / "priors" / "renamed"
@@ -37,7 +43,9 @@ def test_lint_catches_dir_id_mismatch(tmp_path: Path):
 
 def test_lint_catches_unknown_bibkey(tmp_path: Path):
     target = tmp_path / "demo-fm"
-    scaffold_project(target=target, project_name="demo-fm", description="A test project.", org="acme")
+    scaffold_project(
+        target=target, project_name="demo-fm", description="A test project.", org="acme"
+    )
 
     prior_yaml = target / "priors" / "example_linear_scm" / "prior.yaml"
     text = prior_yaml.read_text()

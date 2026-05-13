@@ -7,7 +7,23 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
-ignore = ["E501"]
+ignore = [
+  "E501",   # line length — line-length is set above; allow the occasional long line
+  # ── ML/stats idioms — capital math symbols are the convention, not bugs.
+  "N803",   # argument names like X, A
+  "N806",   # local names like X, W, A, B
+  "N818",   # exception names without "Error" suffix
+  # ── Unicode characters are intentional in math/stats docstrings (μ, σ, π).
+  "RUF001", # ambiguous unicode in strings
+  "RUF002", # ambiguous unicode in docstrings
+  "RUF003", # ambiguous unicode in comments
+]
+
+# Typer's argument defaults (`x: int = typer.Option(...)`) are the documented
+# idiom; B008 conflicts with how the framework is meant to be used.
+[tool.ruff.lint.per-file-ignores]
+"packages/cli/priorstudio/cli.py" = ["B008"]
+"packages/cli/priorstudio/**/*.py" = ["B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["packages"]

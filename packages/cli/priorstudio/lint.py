@@ -83,9 +83,11 @@ def lint_project(project: Path) -> list[str]:
                                 f"{md}: references bibkey '{key}' not present in references.bib"
                             )
 
-    for yaml_path in list((project / "priors").rglob("prior.yaml")) + list(
-        (project / "evals").glob("*.yaml")
-    ) + list((project / "models").glob("*.yaml")):
+    for yaml_path in (
+        list((project / "priors").rglob("prior.yaml"))
+        + list((project / "evals").glob("*.yaml"))
+        + list((project / "models").glob("*.yaml"))
+    ):
         spec = _safe_load(yaml_path)
         for key in spec.get("citations") or []:
             if key not in bib_keys:

@@ -5,7 +5,9 @@ from priorstudio.scaffold import scaffold_project
 
 def test_scaffold_creates_expected_layout(tmp_path: Path):
     target = tmp_path / "demo-fm"
-    scaffold_project(target=target, project_name="demo-fm", description="A test project.", org="acme")
+    scaffold_project(
+        target=target, project_name="demo-fm", description="A test project.", org="acme"
+    )
 
     assert (target / "README.md").exists()
     assert (target / "ROADMAP.md").exists()
@@ -19,7 +21,9 @@ def test_scaffold_creates_expected_layout(tmp_path: Path):
 
 def test_scaffold_substitutes_placeholders(tmp_path: Path):
     target = tmp_path / "demo-fm"
-    scaffold_project(target=target, project_name="demo-fm", description="A test project.", org="acme")
+    scaffold_project(
+        target=target, project_name="demo-fm", description="A test project.", org="acme"
+    )
 
     readme = (target / "README.md").read_text()
     assert "demo-fm" in readme

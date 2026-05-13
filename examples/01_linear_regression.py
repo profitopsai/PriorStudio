@@ -21,14 +21,12 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-
 from priorstudio_core import Model, ModelSpec, RunSpec
 from priorstudio_core.model import BlockConfig, OutputHead
 from priorstudio_core.prior import Prior, PriorSpec
 from priorstudio_core.registry import register_prior
 from priorstudio_core.run import ModelRef, PriorRef
 from priorstudio_core.training import train_pfn
-
 
 # ── 1. The prior ──────────────────────────────────────────────────────────
 
@@ -77,9 +75,15 @@ def build_model() -> Model:
         description="Two-layer tabular PFN for in-context linear regression.",
         blocks=[
             BlockConfig(type="tabular_embedder", config={"d_model": 32}),
-            BlockConfig(type="transformer_encoder", config={
-                "d_model": 32, "n_heads": 2, "n_layers": 2, "dropout": 0.0,
-            }),
+            BlockConfig(
+                type="transformer_encoder",
+                config={
+                    "d_model": 32,
+                    "n_heads": 2,
+                    "n_layers": 2,
+                    "dropout": 0.0,
+                },
+            ),
             BlockConfig(type="scalar_head", config={"d_model": 32, "d_out": 1}),
         ],
         output_heads=[OutputHead(name="pred_y", task="forecast")],
@@ -101,10 +105,12 @@ def train(steps: int = 500) -> dict[str, Any]:
             "weight_std": {"type": "float", "range": [0.5, 1.5]},
             "noise_scale": {"type": "float", "range": [0.05, 0.2]},
         },
-        outputs={"variables": [
-            {"name": "X", "type": "tensor", "shape": "(N, 1)"},
-            {"name": "y", "type": "tensor", "shape": "(N,)"},
-        ]},
+        outputs={
+            "variables": [
+                {"name": "X", "type": "tensor", "shape": "(N, 1)"},
+                {"name": "y", "type": "tensor", "shape": "(N,)"},
+            ]
+        },
     )
     prior = BayesianLinearPrior()
     prior.spec = prior_spec
@@ -143,8 +149,8 @@ def evaluate(model: Model, num_tasks: int = 50, num_points: int = 80) -> dict[st
 
     for k in range(num_tasks):
         task = prior.sample(seed=10_000 + k, num_points=num_points, weight_std=1.0, noise_scale=0.1)
-        x = task["X"]      # (N, 1)
-        y = task["y"]      # (N,)
+        x = task["X"]  # (N, 1)
+        y = task["y"]  # (N,)
 
         # Hold out the last 16 points; the model "sees" the first N-16 as context
         # and predicts on the last 16. The current naive inference path runs the
@@ -155,7 +161,7 @@ def evaluate(model: Model, num_tasks: int = 50, num_points: int = 80) -> dict[st
         y_query = y[-n_query:]
 
         with torch.no_grad():
-            inp = torch.from_numpy(x_query).float().unsqueeze(0)      # (1, n_query, 1)
+            inp = torch.from_numpy(x_query).float().unsqueeze(0)  # (1, n_query, 1)
             out = inp
             for _, mod in model.modules:
                 out = mod(out)
@@ -169,16 +175,16 @@ def evaluate(model: Model, num_tasks: int = 50, num_points: int = 80) -> dict[st
         a_ols, b_ols = np.polyfit(x_ctx, y_ctx, 1)
         ols_pred = a_ols * x_query[:, 0] + b_ols
 
-        pfn_sse  += float(np.sum((preds       - y_query) ** 2))
-        mean_sse += float(np.sum((mean_pred   - y_query) ** 2))
-        ols_sse  += float(np.sum((ols_pred    - y_query) ** 2))
-        total    += n_query
+        pfn_sse += float(np.sum((preds - y_query) ** 2))
+        mean_sse += float(np.sum((mean_pred - y_query) ** 2))
+        ols_sse += float(np.sum((ols_pred - y_query) ** 2))
+        total += n_query
 
     return {
-        "pfn_mse":  pfn_sse  / total,
+        "pfn_mse": pfn_sse / total,
         "mean_mse": mean_sse / total,
-        "ols_mse":  ols_sse  / total,
-        "tasks":    num_tasks,
+        "ols_mse": ols_sse / total,
+        "tasks": num_tasks,
     }
 
 
@@ -190,9 +196,11 @@ def main() -> None:
     print()
     model, result = train(steps=500)
     print()
-    print(f"Training: status={result.get('status')!r}  "
-          f"final_loss={result.get('final_loss'):.4f}  "
-          f"wall_time={result.get('wall_time_s'):.1f}s")
+    print(
+        f"Training: status={result.get('status')!r}  "
+        f"final_loss={result.get('final_loss'):.4f}  "
+        f"wall_time={result.get('wall_time_s'):.1f}s"
+    )
     print()
 
     if result.get("status") != "ok":
@@ -203,27 +211,39 @@ def main() -> None:
     metrics = evaluate(model, num_tasks=50, num_points=80)
     print()
     print(f"  PFN MSE        : {metrics['pfn_mse']:.4f}")
-    print(f"  Mean baseline  : {metrics['mean_mse']:.4f}    "
-          "(predict the context mean — what a useless model does)")
-    print(f"  OLS baseline   : {metrics['ols_mse']:.4f}    "
-          "(closed-form linear fit on the context — what a perfect-for-this-prior model approaches)")
+    print(
+        f"  Mean baseline  : {metrics['mean_mse']:.4f}    "
+        "(predict the context mean — what a useless model does)"
+    )
+    print(
+        f"  OLS baseline   : {metrics['ols_mse']:.4f}    "
+        "(closed-form linear fit on the context — what a perfect-for-this-prior model approaches)"
+    )
     print()
 
     pfn = metrics["pfn_mse"]
     if pfn < metrics["mean_mse"]:
-        print(f"✓ PFN beats the mean baseline by {metrics['mean_mse'] / pfn:.1f}× — "
-              "it has learned to use the input x.")
+        print(
+            f"✓ PFN beats the mean baseline by {metrics['mean_mse'] / pfn:.1f}× — "
+            "it has learned to use the input x."
+        )
     else:
-        print("⚠ PFN does not beat the mean baseline — likely needs more training "
-              "steps or a deeper model.")
+        print(
+            "⚠ PFN does not beat the mean baseline — likely needs more training "
+            "steps or a deeper model."
+        )
 
     if pfn < metrics["ols_mse"] * 1.5:
-        print(f"✓ PFN is within {pfn / metrics['ols_mse']:.2f}× of OLS — "
-              "approaching closed-form Bayesian inference, which is the headline claim "
-              "of the PFN paper.")
+        print(
+            f"✓ PFN is within {pfn / metrics['ols_mse']:.2f}× of OLS — "
+            "approaching closed-form Bayesian inference, which is the headline claim "
+            "of the PFN paper."
+        )
     else:
-        print("⚠ PFN is well above OLS — the gap is normal at this scale; the published "
-              "paper trains 100× longer with a larger model.")
+        print(
+            "⚠ PFN is well above OLS — the gap is normal at this scale; the published "
+            "paper trains 100× longer with a larger model."
+        )
 
 
 if __name__ == "__main__":

@@ -23,4 +23,4 @@ BUILTIN_SCORERS: dict[str, DatasetScorer] = {
     "m4_monthly_mse": M4MonthlyForecast(),
 }
 
-__all__ = ["DatasetScorer", "ScorerResult", "BUILTIN_SCORERS"]
+__all__ = ["BUILTIN_SCORERS", "DatasetScorer", "ScorerResult"]

@@ -21,18 +21,16 @@ Int J Forecast 36, 2020.
 from __future__ import annotations
 
 import math
-from typing import Any
 
 from .base import DatasetScorer, ScorerResult
-
 
 # Match the TabPFN-TS prior's feature shape so the model sees inputs of
 # the same dimensionality it was trained on.
 NUM_LAGS = 8
 SEASONALITY = 12
 FORECAST_HORIZON = 12
-N_SERIES = 20         # small sample → fast eval on CPU
-MIN_HISTORY = NUM_LAGS + 24   # need enough history for lags + a context window
+N_SERIES = 20  # small sample → fast eval on CPU
+MIN_HISTORY = NUM_LAGS + 24  # need enough history for lags + a context window
 
 
 class M4MonthlyForecast(DatasetScorer):
@@ -118,7 +116,6 @@ class M4MonthlyForecast(DatasetScorer):
             normed = (series - mean) / std
 
             t_history = len(normed) - FORECAST_HORIZON
-            history = normed[:t_history]
             target = normed[t_history:]
 
             # Build the feature row used during training:
@@ -138,10 +135,12 @@ class M4MonthlyForecast(DatasetScorer):
                 sin_s = math.sin(2.0 * math.pi * i / SEASONALITY)
                 cos_s = math.cos(2.0 * math.pi * i / SEASONALITY)
                 t_norm = i / float(T_total)
-                feature_rows.append(np.concatenate([lags, [sin_s, cos_s, t_norm]]).astype(np.float32))
+                feature_rows.append(
+                    np.concatenate([lags, [sin_s, cos_s, t_norm]]).astype(np.float32)
+                )
 
-            X = np.stack(feature_rows)                          # (FORECAST_HORIZON, NUM_LAGS + 3)
-            x_t = torch.from_numpy(X).float().unsqueeze(0)      # (1, H, F)
+            X = np.stack(feature_rows)  # (FORECAST_HORIZON, NUM_LAGS + 3)
+            x_t = torch.from_numpy(X).float().unsqueeze(0)  # (1, H, F)
             if device is not None:
                 x_t = x_t.to(device)
 
@@ -164,14 +163,14 @@ class M4MonthlyForecast(DatasetScorer):
                 i = t_history + h
                 if i - SEASONALITY >= 0:
                     # Use the un-normalised history value at the same season offset.
-                    naive_preds[h] = (normed[i - SEASONALITY] * std + mean)
+                    naive_preds[h] = normed[i - SEASONALITY] * std + mean
                 else:
                     naive_preds[h] = mean
 
             err_model = preds - target_orig
             err_naive = naive_preds - target_orig
-            model_squared_errs.extend((err_model ** 2).tolist())
-            naive_squared_errs.extend((err_naive ** 2).tolist())
+            model_squared_errs.extend((err_model**2).tolist())
+            naive_squared_errs.extend((err_naive**2).tolist())
             model_abs_errs.extend(np.abs(err_model).tolist())
             naive_abs_errs.extend(np.abs(err_naive).tolist())
 

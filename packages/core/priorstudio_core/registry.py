@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -41,7 +42,7 @@ def get_prior(name: str) -> type:
     # `-` (URL-safe), but Python decorators register with idiomatic snake_case.
     # Without this, a prior registered as "linear_regression" can't be found
     # under its YAML id "linear-regression".
-    for candidate in (name, name.replace('-', '_'), name.replace('_', '-')):
+    for candidate in (name, name.replace("-", "_"), name.replace("_", "-")):
         if candidate in _PRIORS:
             return _PRIORS[candidate]
     raise KeyError(f"No prior registered under '{name}'. Available: {sorted(_PRIORS)}")
@@ -77,7 +78,7 @@ def _clear_for_tests() -> None:
     _EVALS.clear()
 
 
-def discover_in_project(project_root: "Any") -> None:
+def discover_in_project(project_root: Any) -> None:
     """Import every Python module under priors/ and evals/ so decorators register.
 
     project_root: pathlib.Path — typed loosely to avoid an import cycle.
@@ -91,7 +92,9 @@ def discover_in_project(project_root: "Any") -> None:
         if not d.exists():
             continue
         for py in d.rglob("*.py"):
-            spec = importlib.util.spec_from_file_location(f"_ps_dyn_{py.stem}_{abs(hash(str(py)))}", py)
+            spec = importlib.util.spec_from_file_location(
+                f"_ps_dyn_{py.stem}_{abs(hash(str(py)))}", py
+            )
             if spec is None or spec.loader is None:
                 continue
             module = importlib.util.module_from_spec(spec)

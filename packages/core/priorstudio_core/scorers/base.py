@@ -47,5 +47,4 @@ class DatasetScorer(ABC):
         eval_spec: EvalSpec,
         loader: RegistryDatasetLoader,
         run_spec: RunSpec,
-    ) -> ScorerResult:
-        ...
+    ) -> ScorerResult: ...

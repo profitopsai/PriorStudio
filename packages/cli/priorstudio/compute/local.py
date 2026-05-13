@@ -17,9 +17,7 @@ def _emit_event(event: str, **fields: Any) -> None:
     (PRIORSTUDIO_JSON_PROGRESS=1). Falls back to no-op when interactive."""
     if os.environ.get("PRIORSTUDIO_JSON_PROGRESS") != "1":
         return
-    sys.stdout.write(
-        json.dumps({"event": event, **fields, "ts": time.time()}) + "\n"
-    )
+    sys.stdout.write(json.dumps({"event": event, **fields, "ts": time.time()}) + "\n")
     sys.stdout.flush()
 
 
@@ -68,7 +66,7 @@ class LocalAdapter(ComputeAdapter):
                     "status": "error",
                     "reason": (
                         f"prior '{run.prior.id}' has a YAML spec but no Python class "
-                        f"registered via @register_prior(\"{run.prior.id}\"). "
+                        f'registered via @register_prior("{run.prior.id}"). '
                         "See examples/tcpfn for the registration pattern."
                     ),
                 }
@@ -159,7 +157,10 @@ class LocalAdapter(ComputeAdapter):
 
             try:
                 result = scorer.score(
-                    model=model, eval_spec=eval_spec, loader=loader, run_spec=run,
+                    model=model,
+                    eval_spec=eval_spec,
+                    loader=loader,
+                    run_spec=run,
                 )
                 out[eval_id] = {
                     "metrics": result.metrics,

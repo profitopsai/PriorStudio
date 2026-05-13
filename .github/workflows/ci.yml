@@ -73,11 +73,14 @@ jobs:
             echo "::endgroup::"
           done
 
-      - name: Sample 3 seeds from each prior (smoke)
+      - name: Sample 3 tasks from each prior (smoke)
         run: |
           for dir in priors/*/; do
             slug=$(basename "$dir")
             echo "::group::Sample $slug"
-            priorstudio sample "$dir/prior.yaml" --seeds 3 --num-points 8
+            # `sample` emits the full sample JSON to stdout; redirect so CI
+            # logs stay readable. The exit code is what we actually care
+            # about for the smoke test.
+            priorstudio sample . "$slug" --count 3 > /dev/null
             echo "::endgroup::"
           done

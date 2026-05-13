@@ -1,15 +1,26 @@
 """Linear-SCM discovery prior — recover an ER-DAG from observations."""
 
 from __future__ import annotations
+
 from typing import Any
+
 import numpy as np
 from priorstudio_core import Prior, register_prior
 
 
 @register_prior("linear_scm")
 class LinearScmPrior(Prior):
-    def sample(self, *, seed, num_points=200, d=5, edge_prob=0.4,
-               weight_range=(0.5, 2.0), noise_scale=0.3, **_) -> dict[str, Any]:
+    def sample(
+        self,
+        *,
+        seed,
+        num_points=200,
+        d=5,
+        edge_prob=0.4,
+        weight_range=(0.5, 2.0),
+        noise_scale=0.3,
+        **_,
+    ) -> dict[str, Any]:
         rng = np.random.default_rng(seed)
         order = rng.permutation(d)
         A = np.zeros((d, d), dtype=np.float32)

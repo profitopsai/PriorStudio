@@ -1,7 +1,9 @@
 """Beta-Bernoulli coin-flip prior."""
 
 from __future__ import annotations
+
 from typing import Any
+
 import numpy as np
 from priorstudio_core import Prior, register_prior
 

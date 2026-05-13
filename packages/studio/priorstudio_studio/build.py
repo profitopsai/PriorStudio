@@ -19,7 +19,9 @@ def _env() -> Environment:
         loader=FileSystemLoader(_TEMPLATES),
         autoescape=select_autoescape(["html"]),
     )
-    env.filters["markdown"] = lambda text: md.markdown(text or "", extensions=["fenced_code", "tables"])
+    env.filters["markdown"] = lambda text: md.markdown(
+        text or "", extensions=["fenced_code", "tables"]
+    )
     return env
 
 
@@ -65,7 +67,11 @@ def _gather(project_root: Path) -> dict[str, Any]:
         for md_path in sorted(summaries_dir.glob("*.md")):
             lit_summaries.append(_read_initiative(md_path))
 
-    bib = (root / "literature" / "references.bib").read_text() if (root / "literature" / "references.bib").exists() else ""
+    bib = (
+        (root / "literature" / "references.bib").read_text()
+        if (root / "literature" / "references.bib").exists()
+        else ""
+    )
 
     return {
         "project_name": root.name,
