@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "priorstudio"
-version = "0.4.0"
+version = "0.5.0"
 description = "CLI for the PriorStudio framework — scaffold, validate, lint, and run prior-fitted foundation model projects."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -23,7 +23,7 @@ dependencies = [
   "pyyaml>=6.0",
   "jsonschema>=4.21",
   "requests>=2.31",
-  "priorstudio-core>=0.4.0",
+  "priorstudio-core>=0.5.0",
 ]
 
 [project.optional-dependencies]
@@ -33,7 +33,7 @@ mlflow = ["mlflow>=2.10"]
 modal = ["modal>=0.62"]
 runpod = ["runpod>=1.6"]
 hf = ["huggingface_hub>=0.20"]
-studio = ["priorstudio-studio>=0.4.0"]
+studio = ["priorstudio-studio>=0.5.0"]
 all = [
   "priorstudio-core[torch]",
   "wandb>=0.16",
@@ -41,7 +41,7 @@ all = [
   "modal>=0.62",
   "runpod>=1.6",
   "huggingface_hub>=0.20",
-  "priorstudio-studio>=0.4.0",
+  "priorstudio-studio>=0.5.0",
 ]
 dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.4"]
 
