@@ -40,9 +40,9 @@ from __future__ import annotations
 
 from .base import DatasetScorer, ScorerResult
 
-CTX_PER_PASS = 48          # match the prior's training context length
-QRY_PER_PASS = 16          # match the prior's training query length
-N_BOOTSTRAPS = 30          # passes; each test point gets sampled ~ N_BOOTSTRAPS * 16 / n_test times
+CTX_PER_PASS = 48  # match the prior's training context length
+QRY_PER_PASS = 16  # match the prior's training query length
+N_BOOTSTRAPS = 30  # passes; each test point gets sampled ~ N_BOOTSTRAPS * 16 / n_test times
 BOOTSTRAP_SEED = 7
 
 
@@ -175,8 +175,9 @@ class BreastCancerVsLogReg(DatasetScorer):
         in_dist_mean_pos_logit = 0.0
         in_dist_mean_neg_logit = 0.0
         try:
-            from ..registry import get_prior
             import torch.nn.functional as F  # noqa: N812
+
+            from ..registry import get_prior
 
             prior_cls = get_prior(run_spec.prior.id)
             prior = prior_cls()

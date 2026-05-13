@@ -93,9 +93,7 @@ class BayesianLinearPrior(Prior):
         y_ctx, y_q = y_p[:n_ctx], y_p[n_ctx:]
 
         ctx_tok = np.stack([x_ctx, y_ctx, np.ones_like(x_ctx)], axis=1)
-        q_tok = np.stack(
-            [x_q, np.zeros_like(x_q), np.zeros_like(x_q)], axis=1
-        )
+        q_tok = np.stack([x_q, np.zeros_like(x_q), np.zeros_like(x_q)], axis=1)
         seq = np.concatenate([ctx_tok, q_tok], axis=0).astype(np.float32)
 
         return {
@@ -194,9 +192,7 @@ def evaluate(model: Model, num_tasks: int = 50, num_points: int = 80) -> dict[st
     total = 0
 
     for k in range(num_tasks):
-        task = prior.sample(
-            seed=10_000 + k, num_points=num_points, weight_std=1.0, noise_scale=0.1
-        )
+        task = prior.sample(seed=10_000 + k, num_points=num_points, weight_std=1.0, noise_scale=0.1)
         seq = task["X"]
         n_ctx = task["n_ctx"]
 
