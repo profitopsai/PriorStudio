@@ -3,16 +3,23 @@
 This is the simplest end-to-end PriorStudio example. We:
 
   1. Define a Bayesian linear regression prior — random (slope, intercept)
-     plus i.i.d. Gaussian noise.
+     plus i.i.d. Gaussian noise. Each sample is *packed* as a (context,
+     query) token sequence and carries an ``n_ctx`` boundary so the
+     default training step does in-context regression.
   2. Build a small transformer model (d_model=64, 3 layers).
-  3. Train it for 2000 steps with a custom in-context step function that
-     packs each task as [(x_ctx, y_ctx, 1), …, (x_query, 0, 0), …] tokens.
+  3. Train it for 2000 steps with the standard ``train_pfn`` loop —
+     no custom step function needed.
   4. On held-out tasks, beat the mean baseline by ~100× and come within
-     ~1.2× of the closed-form OLS (Bayesian-optimal) solution. The model
+     ~1.3× of the closed-form OLS (Bayesian-optimal) solution. The model
      has never seen these tasks — it's doing Bayesian inference from a
      single forward pass over the context.
 
-Expected runtime: ~40–60 seconds on a modern laptop CPU. Output: a saved
+Same prior, model, and run live as a full FM project in
+``studies/linear-regression-bayes/`` and reproduce the same result via
+``priorstudio run studies/linear-regression-bayes/runs/v0_1.yaml``. The
+hosted studio uses that path; this script is the from-Python equivalent.
+
+Expected runtime: ~40-60 seconds on a modern laptop CPU. Output: a saved
 checkpoint at ``checkpoint/model.pt`` you can load for inference, plus a
 final MSE comparison printed at the end.
 
@@ -46,10 +53,17 @@ CTX_FRAC = 0.75
 class BayesianLinearPrior(Prior):
     """y = a*x + b + ε, with (a, b) ~ N(0, weight_std) and ε ~ N(0, noise_scale).
 
-    A correct PFN trained on this prior, given a context of (x, y) pairs
-    from a single (a, b), predicts on new x's in a way that approaches
-    the closed-form Bayesian posterior mean — without ever inverting a
-    covariance matrix at inference time.
+    Each call to sample() emits a single packed sequence:
+
+        X[i] = (x_i, y_i, 1.0)   for i in 0..n_ctx-1     (context tokens)
+        X[i] = (x_i, 0.0, 0.0)   for i in n_ctx..N-1     (query tokens)
+        y    = the query y values
+        n_ctx = boundary index
+
+    `train_pfn`'s default step recognises ``n_ctx`` and slices the model's
+    output at that boundary so the loss is computed only at query
+    positions. The transformer sees the context tokens in the same
+    sequence and learns to route from query → context to do regression.
     """
 
     def sample(
@@ -65,11 +79,29 @@ class BayesianLinearPrior(Prior):
         rng = np.random.default_rng(seed)
         a = float(rng.normal(0.0, weight_std))
         b = float(rng.normal(0.0, weight_std))
+
         x = rng.uniform(-x_range, x_range, size=num_points).astype(np.float32)
         y = (a * x + b + rng.normal(0.0, noise_scale, size=num_points)).astype(np.float32)
+
+        # Random ctx/query partition per task.
+        perm = rng.permutation(num_points)
+        x_p = x[perm]
+        y_p = y[perm]
+
+        n_ctx = int(num_points * CTX_FRAC)
+        x_ctx, x_q = x_p[:n_ctx], x_p[n_ctx:]
+        y_ctx, y_q = y_p[:n_ctx], y_p[n_ctx:]
+
+        ctx_tok = np.stack([x_ctx, y_ctx, np.ones_like(x_ctx)], axis=1)
+        q_tok = np.stack(
+            [x_q, np.zeros_like(x_q), np.zeros_like(x_q)], axis=1
+        )
+        seq = np.concatenate([ctx_tok, q_tok], axis=0).astype(np.float32)
+
         return {
-            "X": x.reshape(-1, 1),
-            "y": y,
+            "X": seq,
+            "y": y_q,
+            "n_ctx": n_ctx,
             "a_true": a,
             "b_true": b,
         }
@@ -103,80 +135,7 @@ def build_model() -> Model:
     return Model(spec)
 
 
-# ── 3. In-context step function ───────────────────────────────────────────
-
-
-def _pack_in_context_sequence(
-    x_all: np.ndarray, y_all: np.ndarray, n_ctx: int, rng: np.random.Generator
-) -> tuple[np.ndarray, np.ndarray]:
-    """Build a single training sequence + the y-targets for the query points.
-
-    The transformer sees tokens of shape (x, y_or_0, is_context_flag):
-      - Context tokens carry the real y and a flag of 1.
-      - Query tokens carry y=0 and flag=0; the model must predict y for these.
-
-    Both context and query positions live in the same sequence so the
-    transformer's self-attention can route information from context to
-    query — which is the whole point of in-context inference.
-    """
-    n_total = x_all.shape[0]
-    perm = rng.permutation(n_total)
-    x_perm = x_all[perm]
-    y_perm = y_all[perm]
-    x_ctx, x_q = x_perm[:n_ctx], x_perm[n_ctx:]
-    y_ctx, y_q = y_perm[:n_ctx], y_perm[n_ctx:]
-
-    ctx_tok = np.concatenate(
-        [x_ctx, y_ctx[:, None], np.ones((n_ctx, 1), dtype=np.float32)], axis=1
-    )
-    q_tok = np.concatenate(
-        [
-            x_q,
-            np.zeros((x_q.shape[0], 1), dtype=np.float32),
-            np.zeros((x_q.shape[0], 1), dtype=np.float32),
-        ],
-        axis=1,
-    )
-    seq = np.concatenate([ctx_tok, q_tok], axis=0).astype(np.float32)
-    return seq, y_q
-
-
-def in_context_step(model: Any, batch: list[dict], hp: dict) -> Any:
-    """Custom train_pfn step that packs each task as a (context, query) sequence.
-
-    The default step in priorstudio_core only feeds X to the model — fine for
-    structure-discovery priors that emit a target adjacency, but useless for
-    in-context regression where the model needs to *see* the (x, y) context
-    pairs alongside the query x's. So we override it here.
-    """
-    import torch
-    import torch.nn.functional as F
-
-    n_total = batch[0]["X"].shape[0]
-    n_ctx = int(n_total * CTX_FRAC)
-    rng = np.random.default_rng()
-
-    inputs: list[np.ndarray] = []
-    targets: list[np.ndarray] = []
-    for b in batch:
-        seq, y_q = _pack_in_context_sequence(b["X"], b["y"], n_ctx, rng)
-        inputs.append(seq)
-        targets.append(y_q)
-
-    inp = torch.from_numpy(np.stack(inputs))  # (B, N, 3)
-    tgt = torch.from_numpy(np.stack(targets))  # (B, n_query)
-
-    out = inp
-    for _, mod in model.modules:
-        out = mod(out)
-
-    # Predictions at query positions only — the model also outputs at the
-    # context positions, but the loss only looks at queries.
-    pred = out[:, n_ctx:, 0]  # (B, n_query)
-    return F.mse_loss(pred, tgt)
-
-
-# ── 4. Training ───────────────────────────────────────────────────────────
+# ── 3. Training ───────────────────────────────────────────────────────────
 
 
 def train(steps: int = 2000) -> tuple[Model, dict[str, Any]]:
@@ -186,17 +145,15 @@ def train(steps: int = 2000) -> tuple[Model, dict[str, Any]]:
         version="0.1.0",
         kind="tabular",
         parameters={
-            # Fixed-size sequences keep the batched step simple; 64 points
-            # is small enough to train fast and large enough to be a real
-            # Bayesian-inference target.
             "num_points": {"type": "int", "range": [64, 64]},
             "weight_std": {"type": "float", "range": [0.5, 1.5]},
             "noise_scale": {"type": "float", "range": [0.05, 0.2]},
         },
         outputs={
             "variables": [
-                {"name": "X", "type": "tensor", "shape": "(N, 1)"},
-                {"name": "y", "type": "tensor", "shape": "(N,)"},
+                {"name": "X", "type": "tensor", "shape": "(N, 3)"},
+                {"name": "y", "type": "tensor", "shape": "(n_query,)"},
+                {"name": "n_ctx", "type": "scalar"},
             ]
         },
     )
@@ -218,10 +175,10 @@ def train(steps: int = 2000) -> tuple[Model, dict[str, Any]]:
     )
 
     model = build_model()
-    return model, train_pfn(model=model, prior=prior, run=run, step_fn=in_context_step)
+    return model, train_pfn(model=model, prior=prior, run=run)
 
 
-# ── 5. Verification ───────────────────────────────────────────────────────
+# ── 4. Verification ───────────────────────────────────────────────────────
 
 
 def evaluate(model: Model, num_tasks: int = 50, num_points: int = 80) -> dict[str, float]:
@@ -240,26 +197,13 @@ def evaluate(model: Model, num_tasks: int = 50, num_points: int = 80) -> dict[st
         task = prior.sample(
             seed=10_000 + k, num_points=num_points, weight_std=1.0, noise_scale=0.1
         )
-        x_all = task["X"]
-        y_all = task["y"]
-        n_ctx = int(num_points * CTX_FRAC)
-        x_ctx, x_q = x_all[:n_ctx], x_all[n_ctx:]
-        y_ctx, y_q = y_all[:n_ctx], y_all[n_ctx:]
+        seq = task["X"]
+        n_ctx = task["n_ctx"]
 
-        # Build the same packed sequence the model was trained on.
-        ctx_tok = np.concatenate(
-            [x_ctx, y_ctx[:, None], np.ones((n_ctx, 1), dtype=np.float32)], axis=1
-        )
-        n_q = num_points - n_ctx
-        q_tok = np.concatenate(
-            [
-                x_q,
-                np.zeros((n_q, 1), dtype=np.float32),
-                np.zeros((n_q, 1), dtype=np.float32),
-            ],
-            axis=1,
-        )
-        seq = np.concatenate([ctx_tok, q_tok], axis=0).astype(np.float32)
+        x_ctx = seq[:n_ctx, 0:1]
+        y_ctx = seq[:n_ctx, 1]
+        x_q = seq[n_ctx:, 0:1]
+        y_q = task["y"]
 
         with torch.no_grad():
             out = torch.from_numpy(seq).unsqueeze(0)
@@ -267,7 +211,6 @@ def evaluate(model: Model, num_tasks: int = 50, num_points: int = 80) -> dict[st
                 out = mod(out)
             preds = out[0, n_ctx:, 0].cpu().numpy()
 
-        # Baselines: mean of the visible y's, and OLS on (x_ctx, y_ctx).
         mean_pred = np.full_like(y_q, y_ctx.mean())
         a_ols, b_ols = np.polyfit(x_ctx[:, 0], y_ctx, 1)
         ols_pred = a_ols * x_q[:, 0] + b_ols
@@ -275,7 +218,7 @@ def evaluate(model: Model, num_tasks: int = 50, num_points: int = 80) -> dict[st
         pfn_sse += float(np.sum((preds - y_q) ** 2))
         mean_sse += float(np.sum((mean_pred - y_q) ** 2))
         ols_sse += float(np.sum((ols_pred - y_q) ** 2))
-        total += n_q
+        total += y_q.shape[0]
 
     return {
         "pfn_mse": pfn_sse / total,
@@ -285,7 +228,7 @@ def evaluate(model: Model, num_tasks: int = 50, num_points: int = 80) -> dict[st
     }
 
 
-# ── 6. Glue ───────────────────────────────────────────────────────────────
+# ── 5. Glue ───────────────────────────────────────────────────────────────
 
 
 def main() -> None:
@@ -328,9 +271,7 @@ def main() -> None:
             "it has learned to read the context."
         )
     else:
-        print(
-            "⚠ PFN does not beat the mean baseline — try more steps or a deeper model."
-        )
+        print("⚠ PFN does not beat the mean baseline — try more steps or a deeper model.")
 
     if pfn < metrics["ols_mse"] * 2.0:
         print(
@@ -339,9 +280,7 @@ def main() -> None:
             "This is the headline claim of the PFN paper."
         )
     else:
-        print(
-            "⚠ PFN is well above OLS — train longer / wider for tighter convergence."
-        )
+        print("⚠ PFN is well above OLS — train longer / wider for tighter convergence.")
 
 
 if __name__ == "__main__":

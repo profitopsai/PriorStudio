@@ -108,6 +108,13 @@ def _default_step(model: Any, batch: list[dict], hp: dict) -> Any:
 
     # Regression branch
     y = torch.stack([torch.from_numpy(b["y"]).float() for b in batch])
+    # In-context regression: when the prior packs each task as a
+    # (context, query) sequence and emits n_ctx, only the query
+    # positions are scored. Context positions feed the transformer
+    # so it can attend from query → context — the actual PFN trick.
+    n_ctx = sample0.get("n_ctx")
+    if n_ctx is not None:
+        logits = logits[:, int(n_ctx) :, :]
     # Squeeze the trailing-1 feature axis off the model output if the
     # target is shaped (B, N) — common for scalar regressions like
     # linear_regression where the model emits a per-point prediction.

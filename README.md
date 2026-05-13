@@ -69,6 +69,8 @@ python examples/01_linear_regression.py
 
 The example trains a 3-layer transformer on synthetic Bayesian linear regression tasks for 2000 steps (~1 min CPU). On 50 fresh held-out tasks it beats a mean baseline by ~100× and lands within ~1.3× of the closed-form OLS solution — i.e. it does Bayesian inference *from the context alone, in a single forward pass*, without ever inverting a covariance matrix at inference time. The training loop also emits one JSON line per step on stdout (set `PRIORSTUDIO_JSON_PROGRESS=1`) for piping through `jq` or driving a live UI. Output: `checkpoint/model.pt` + the final metrics printed at the end.
 
+The same prior, model, and hyperparameters live as a reproducible FM-project artifact at [`studies/linear-regression-bayes/`](studies/linear-regression-bayes/) — runnable via `priorstudio run studies/linear-regression-bayes/runs/v0_1.yaml` (the same code path the hosted studio uses internally). See the [study README](studies/linear-regression-bayes/README.md) for the full claim, metrics, and reproduction recipe.
+
 ---
 
 ## The marketplace

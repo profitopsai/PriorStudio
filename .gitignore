@@ -57,6 +57,13 @@ checkpoint/
 runs/*/checkpoint/
 runs/*/results.json
 runs/*/metrics.jsonl
+runs/*/config.json
+# Same patterns for FM projects under studies/ (the CLI writes the same
+# tree at <project>/runs/<run_id>/ regardless of where the project lives).
+**/runs/*/checkpoint/
+**/runs/*/results.json
+**/runs/*/metrics.jsonl
+**/runs/*/config.json
 *.pt
 *.pth
 
