@@ -30,5 +30,5 @@
 
 - [ ] If this PR adds a paper-replication template or scorer, the README
       is explicit about what's matched and what isn't vs the published numbers.
-- [ ] No dependency on the hosted studio at `studio.profitops.ai` —
+- [ ] No dependency on the hosted studio at `priorstudio.ai` —
       everything here must work locally.

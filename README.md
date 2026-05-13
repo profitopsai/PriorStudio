@@ -36,7 +36,7 @@ synthetic data generator           ↓
 
 ## What's *not* in this repo
 
-The **hosted studio** at [studio.profitops.ai](https://studio.profitops.ai) — the visual designer, run orchestration, GPU scheduling, sharing infrastructure, marketplace publishing, and team features — is a closed-source product. The studio uses this repo's packages as its training engine and reads `priors/` as its marketplace catalog.
+The **hosted studio** at [priorstudio.ai](https://priorstudio.ai) — the visual designer, run orchestration, GPU scheduling, sharing infrastructure, marketplace publishing, and team features — is a closed-source product. The studio uses this repo's packages as its training engine and reads `priors/` as its marketplace catalog.
 
 If you want a visual editor and someone else running the GPUs, sign up at [priorstudio.ai](https://priorstudio.ai). If you want to train PFNs yourself, hack on priors locally, or contribute to the catalog, this repo is everything you need.
 
@@ -91,7 +91,7 @@ The 13 priors in [`priors/`](priors/) are the curated v0 catalog — each is a c
 | `linear-scm` | Random linear structural causal models | causal |
 | `chain-scm` | Chain-shaped DAGs (X → Y → Z) | causal |
 
-Every prior is a forkable starting point. Open one, change a sampling distribution, retrain, share the checkpoint. The same priors are what the [studio.profitops.ai](https://studio.profitops.ai) marketplace serves — this directory is the canonical source.
+Every prior is a forkable starting point. Open one, change a sampling distribution, retrain, share the checkpoint. The same priors are what the [priorstudio.ai](https://priorstudio.ai) marketplace serves — this directory is the canonical source.
 
 ---
 
@@ -194,6 +194,6 @@ And, if PriorStudio specifically was useful, a link to this repo is the most hel
 
 ## Hosted studio + commercial product
 
-[studio.profitops.ai](https://studio.profitops.ai) is the closed-source SaaS that builds on this repo: visual designer, GPU run orchestration, project sharing, marketplace publishing, team features. The studio is in private alpha — drop us a line at [hello@profitops.ai](mailto:hello@profitops.ai) or [book a call](https://calendly.com/profitops) if you want early access. Either way, you don't need the cloud to use this repo.
+[priorstudio.ai](https://priorstudio.ai) is the closed-source SaaS that builds on this repo: visual designer, GPU run orchestration, project sharing, marketplace publishing, team features. The studio is in private alpha — drop us a line at [hello@profitops.ai](mailto:hello@profitops.ai) or [book a call](https://calendly.com/profitops) if you want early access. Either way, you don't need the cloud to use this repo.
 
 — [ProfitOps.ai](https://profitops.ai)

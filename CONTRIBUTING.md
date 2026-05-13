@@ -141,7 +141,7 @@ We review with a few rules:
 2. **It's honest.** If a scorer can't reproduce a paper's numbers,
    the README says so.
 3. **No vendor lock-in.** Nothing in this repo should depend on the
-   hosted studio at studio.profitops.ai. If a change adds such a
+   hosted studio at priorstudio.ai. If a change adds such a
    dependency, it belongs in the cloud repo, not here.
 
 If a PR sits without review for a week, ping
