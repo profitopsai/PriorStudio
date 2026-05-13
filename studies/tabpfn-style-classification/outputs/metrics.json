@@ -1,0 +1,51 @@
+{
+  "run_id": "tabpfn_classification_v0_1",
+  "status": "ok",
+  "steps": 10000,
+  "batch_size": 32,
+  "lr": 0.0003,
+  "seed": 42,
+  "training": {
+    "final_loss": 0.43,
+    "wall_time_s": 862,
+    "params_total": "~700k"
+  },
+  "in_distribution_eval": {
+    "tasks": 100,
+    "points_per_task": 64,
+    "context_fraction": 0.75,
+    "accuracy": 0.77,
+    "bce": 0.47,
+    "mean_logit_positive_class": 1.41,
+    "mean_logit_negative_class": -1.01,
+    "note": "Fresh tasks drawn from the training prior. The model has learned to do in-context binary classification on the synthetic distribution."
+  },
+  "zero_shot_breast_cancer": {
+    "dataset": "sklearn.datasets.load_breast_cancer",
+    "n_train": 426,
+    "n_test": 143,
+    "n_features": 30,
+    "context_per_pass": 48,
+    "query_per_pass": 16,
+    "bootstraps": 30,
+    "pfn_accuracy": 0.7445,
+    "pfn_auc": 0.803,
+    "logreg_accuracy": 0.986,
+    "logreg_auc": 0.998,
+    "majority_baseline": 0.627,
+    "accuracy_gap_vs_logreg": -0.242,
+    "note": "Zero-shot in-context classification. PFN has never seen the dataset; it predicts purely from the 48-sample context in each of 30 bootstrap passes (probabilities averaged per test point). LogReg fits the full 426-sample train fold."
+  },
+  "compute": {
+    "target": "local",
+    "device": "cpu",
+    "cpu_model": "Apple M-series (laptop)",
+    "torch_version": "2.2.2",
+    "python_version": "3.13"
+  },
+  "notes": [
+    "Headline: zero-shot 74.5% accuracy / 0.80 AUC on a real medical dataset, training only on synthetic random-hyperplane tasks.",
+    "Still 24 percentage points behind LogReg (which fits on the same labelled data). Closing that gap is what richer priors (BNN-generated tasks, SCM mixtures — like TabPFN's actual prior set) buy you. Out of scope for this study.",
+    "Critical pipeline bug fixed during this study: the training loop was passing seed=base+step to sample_batch, which made consecutive steps share batch_size-1 seeds. The model was overfitting to the last ~32 batches and forgetting earlier ones. With seed=base+step*batch_size every task is seen exactly once and the model actually learns to generalize. Same fix benefits every prior in the catalog."
+  ]
+}

@@ -99,6 +99,13 @@ def _default_step(model: Any, batch: list[dict], hp: dict) -> Any:
         # emits one logit per point (scalar_head with d_out=1). Squeeze
         # the trailing feature axis to align with the (B, N) target.
         labels = torch.stack([torch.from_numpy(b["labels"]).float() for b in batch])
+        # In-context classification: when the prior packs each task as
+        # a (context, query) sequence and emits n_ctx, only the query
+        # positions are scored. Same convention as the regression
+        # branch below.
+        n_ctx_c = sample0.get("n_ctx")
+        if n_ctx_c is not None:
+            logits = logits[:, int(n_ctx_c) :, :]
         pred = logits
         if pred.dim() == labels.dim() + 1 and pred.shape[-1] == 1:
             pred = pred.squeeze(-1)
@@ -166,12 +173,35 @@ def train_pfn(
         model_id=run.model.id,
     )
 
+    # Collect trainable parameters across every block. Blocks have three
+    # legitimate shapes today:
+    #   1. block is itself an nn.Module        → mod.parameters()
+    #   2. block holds an nn.Module at .module → mod.module.parameters()
+    #   3. block holds one or more nn.Modules at other attribute names
+    #      (e.g. TabularEmbedder._linear, ScalarHead.proj). Walk the
+    #      instance __dict__ to find them. Without this, those weights
+    #      stay frozen at random init and only the transformer trains —
+    #      which silently works for some easy regression cases and fails
+    #      hard on classification.
+    nn_mod = getattr(torch, "nn", None)
+    nn_module_cls = getattr(nn_mod, "Module", None) if nn_mod else None
+
+    def _block_nn_modules(b: Any) -> list[Any]:
+        if nn_module_cls is not None and isinstance(b, nn_module_cls):
+            return [b]
+        seen: list[Any] = []
+        attached = getattr(b, "module", None)
+        if nn_module_cls is not None and isinstance(attached, nn_module_cls):
+            seen.append(attached)
+        for v in vars(b).values():
+            if nn_module_cls is not None and isinstance(v, nn_module_cls) and v not in seen:
+                seen.append(v)
+        return seen
+
     params = []
     for _, mod in getattr(model, "modules", []):
-        if hasattr(mod, "parameters"):
-            params.extend(mod.parameters())
-        elif hasattr(mod, "module") and hasattr(mod.module, "parameters"):
-            params.extend(mod.module.parameters())
+        for sub in _block_nn_modules(mod):
+            params.extend(sub.parameters())
     if not params:
         result = {"status": "skipped", "reason": "no trainable parameters found", "steps": 0}
         _emit("done", **result)
@@ -185,7 +215,16 @@ def train_pfn(
     prior_params = {**run.prior.overrides}
 
     for step in range(steps):
-        batch = prior.sample_batch(batch_size=batch_size, seed=seed + step, **prior_params)
+        # Disjoint seed range per step. The previous formula `seed=seed+step`
+        # made consecutive steps share batch_size-1 seeds (sample_batch
+        # iterates seed+0..seed+batch_size-1), so each task appeared in
+        # ~batch_size consecutive batches and then never again. Recency
+        # overfitting followed: late-step seeds fit, early-step seeds
+        # forgotten. Multiplying by batch_size makes each task seen exactly
+        # once across training, which is what the PFN setup assumes.
+        batch = prior.sample_batch(
+            batch_size=batch_size, seed=seed + step * batch_size, **prior_params
+        )
         loss = step_fn(model, batch, hp)
         if loss is None:
             result = {"status": "skipped", "reason": "step_fn returned None", "steps": step}
@@ -220,14 +259,12 @@ def train_pfn(
         os.makedirs(ckpt_dir, exist_ok=True)
         # Save weights — flat dict keyed by "<block_name>.<param>"
         # so the inference loader knows which weights go where even
-        # if blocks change order.
+        # if blocks change order. Uses the same walker as the optimizer
+        # so anything that trains gets persisted.
         sd: dict[str, Any] = {}
         for name, mod in getattr(model, "modules", []):
-            if hasattr(mod, "state_dict"):
-                for k, v in mod.state_dict().items():
-                    sd[f"{name}.{k}"] = v
-            elif hasattr(mod, "module") and hasattr(mod.module, "state_dict"):
-                for k, v in mod.module.state_dict().items():
+            for sub in _block_nn_modules(mod):
+                for k, v in sub.state_dict().items():
                     sd[f"{name}.{k}"] = v
         torch.save(sd, os.path.join(ckpt_dir, "model.pt"))
         # Topology: the same list the trainer iterated, in order.
