@@ -4,7 +4,6 @@ then sample from it deterministically."""
 from pathlib import Path
 
 import numpy as np
-
 from priorstudio.scaffold import scaffold_project
 from priorstudio_core.registry import _clear_for_tests, discover_in_project, get_prior
 
@@ -12,7 +11,9 @@ from priorstudio_core.registry import _clear_for_tests, discover_in_project, get
 def test_example_prior_samples_reproducibly(tmp_path: Path):
     _clear_for_tests()
     target = tmp_path / "demo-fm"
-    scaffold_project(target=target, project_name="demo-fm", description="A test project.", org="acme")
+    scaffold_project(
+        target=target, project_name="demo-fm", description="A test project.", org="acme"
+    )
 
     discover_in_project(target)
 

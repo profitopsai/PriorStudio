@@ -31,5 +31,7 @@ class WandbTracker(Tracker):
     def finish(self, results: dict[str, Any]) -> None:
         if self._run is None:
             return
-        self._run.summary.update({k: v for k, v in results.items() if isinstance(v, (int, float, str))})
+        self._run.summary.update(
+            {k: v for k, v in results.items() if isinstance(v, (int, float, str))}
+        )
         self._run.finish()

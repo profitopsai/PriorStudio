@@ -6,7 +6,9 @@ from priorstudio_core.loaders import load_eval, load_model, load_prior, load_pro
 
 def test_load_template_artifacts(tmp_path: Path):
     target = tmp_path / "demo-fm"
-    scaffold_project(target=target, project_name="demo-fm", description="A test project.", org="acme")
+    scaffold_project(
+        target=target, project_name="demo-fm", description="A test project.", org="acme"
+    )
 
     prior = load_prior(target / "priors" / "example_linear_scm" / "prior.yaml")
     assert prior.id == "example_linear_scm"
@@ -27,7 +29,9 @@ def test_load_template_artifacts(tmp_path: Path):
 
 def test_load_project_aggregates(tmp_path: Path):
     target = tmp_path / "demo-fm"
-    scaffold_project(target=target, project_name="demo-fm", description="A test project.", org="acme")
+    scaffold_project(
+        target=target, project_name="demo-fm", description="A test project.", org="acme"
+    )
 
     project = load_project(target)
     assert len(project["priors"]) == 1

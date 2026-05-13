@@ -1,15 +1,18 @@
 """Logistic with random pairwise interactions."""
 
 from __future__ import annotations
+
 from typing import Any
+
 import numpy as np
 from priorstudio_core import Prior, register_prior
 
 
 @register_prior("logistic_interactions")
 class LogisticInteractionsPrior(Prior):
-    def sample(self, *, seed, num_points=200, dim=6,
-               interaction_density=0.2, w_scale=1.0, **_) -> dict[str, Any]:
+    def sample(
+        self, *, seed, num_points=200, dim=6, interaction_density=0.2, w_scale=1.0, **_
+    ) -> dict[str, Any]:
         rng = np.random.default_rng(seed)
         w = rng.normal(0, w_scale, size=dim).astype(np.float32)
         W = rng.normal(0, w_scale, size=(dim, dim)).astype(np.float32)

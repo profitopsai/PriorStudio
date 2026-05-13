@@ -1,6 +1,6 @@
 """PriorStudio core abstractions."""
 
-from . import blocks as _blocks  # registers built-in blocks on import
+from . import blocks as _blocks  # noqa: F401 — registers built-in blocks on import
 from .datasets import DatasetUnavailable, RegistryDatasetLoader
 from .eval import Eval, EvalSpec
 from .model import Model, ModelSpec
@@ -21,12 +21,14 @@ from .run import Run, RunSpec
 __version__ = "0.4.0"
 
 __all__ = [
+    "DatasetUnavailable",
     "Eval",
     "EvalSpec",
     "Model",
     "ModelSpec",
     "Prior",
     "PriorSpec",
+    "RegistryDatasetLoader",
     "Run",
     "RunSpec",
     "get_block",

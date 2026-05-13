@@ -1,15 +1,25 @@
 """Linear regression prior — y = a*x + b + Gaussian noise."""
 
 from __future__ import annotations
+
 from typing import Any
+
 import numpy as np
 from priorstudio_core import Prior, register_prior
 
 
 @register_prior("linear_regression")
 class LinearRegressionPrior(Prior):
-    def sample(self, *, seed, num_points=100, coefficient_range=2.0,
-               intercept_range=1.0, noise_scale=0.1, **_) -> dict[str, Any]:
+    def sample(
+        self,
+        *,
+        seed,
+        num_points=100,
+        coefficient_range=2.0,
+        intercept_range=1.0,
+        noise_scale=0.1,
+        **_,
+    ) -> dict[str, Any]:
         rng = np.random.default_rng(seed)
         a = rng.uniform(-coefficient_range, coefficient_range)
         b = rng.uniform(-intercept_range, intercept_range)

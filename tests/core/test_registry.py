@@ -1,5 +1,4 @@
 import pytest
-
 from priorstudio_core.registry import (
     _clear_for_tests,
     get_block,

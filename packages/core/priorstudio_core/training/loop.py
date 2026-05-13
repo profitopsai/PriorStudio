@@ -27,11 +27,11 @@ import json
 import os
 import sys
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from ..prior import Prior
 from ..run import RunSpec
-
 
 _EMIT_JSON = os.environ.get("PRIORSTUDIO_JSON_PROGRESS") == "1"
 
@@ -45,7 +45,7 @@ def _emit(event: str, **fields: Any) -> None:
     sys.stdout.flush()
 
 
-def _default_step(model: Any, batch: list[dict], hp: dict) -> "Any":
+def _default_step(model: Any, batch: list[dict], hp: dict) -> Any:
     """Default step. Auto-detects the prior's task by inspecting batch
     keys and picks an appropriate loss:
 
@@ -65,7 +65,7 @@ def _default_step(model: Any, batch: list[dict], hp: dict) -> "Any":
     """
     try:
         import torch
-        import torch.nn.functional as F
+        import torch.nn.functional as F  # noqa: N812 — F is the canonical alias for torch.nn.functional
     except ImportError:
         return None
 
@@ -206,7 +206,9 @@ def train_pfn(
     # to stable storage after the CLI exits.
     checkpoint_dir: str | None = None
     try:
-        import os, json
+        import json
+        import os
+
         ckpt_dir = os.path.join(os.getcwd(), "checkpoint")
         os.makedirs(ckpt_dir, exist_ok=True)
         # Save weights — flat dict keyed by "<block_name>.<param>"

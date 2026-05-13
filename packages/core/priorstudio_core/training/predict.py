@@ -75,11 +75,7 @@ def run_inference(
             target = mod
             if hasattr(target, "module") and hasattr(target.module, "state_dict"):
                 target = target.module
-            sd = {
-                k[len(name) + 1:]: v
-                for k, v in flat.items()
-                if k.startswith(name + ".")
-            }
+            sd = {k[len(name) + 1 :]: v for k, v in flat.items() if k.startswith(name + ".")}
             if not sd:
                 # No saved params for this block — skip rather than
                 # error. Lets the checkpoint survive minor topology
@@ -107,7 +103,6 @@ def _dispatch_inference(model: Any, payload: dict) -> dict:
         ctx = payload["context"]
         qry = payload["query"]
         x_ctx = np.asarray(ctx.get("x", []), dtype=np.float32)
-        lbl_ctx = np.asarray(ctx.get("labels", []), dtype=np.float32)
         x_qry = np.asarray(qry.get("x", []), dtype=np.float32)
         if x_ctx.ndim == 1:
             x_ctx = x_ctx.reshape(-1, 1)
@@ -134,7 +129,6 @@ def _dispatch_inference(model: Any, payload: dict) -> dict:
         ctx = payload["context"]
         qry = payload["query"]
         x_ctx = np.asarray(ctx.get("x", []), dtype=np.float32)
-        y_ctx = np.asarray(ctx.get("y", []), dtype=np.float32)
         x_qry = np.asarray(qry.get("x", []), dtype=np.float32)
         if x_ctx.ndim == 1:
             x_ctx = x_ctx.reshape(-1, 1)

@@ -22,10 +22,14 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
-studio_app = typer.Typer(name="studio", help="Static-site Studio: render the project as a browsable site.")
+studio_app = typer.Typer(
+    name="studio", help="Static-site Studio: render the project as a browsable site."
+)
 app.add_typer(studio_app, name="studio")
 
-author_app = typer.Typer(name="author", help="Local prior-authoring helpers (no API access required).")
+author_app = typer.Typer(
+    name="author", help="Local prior-authoring helpers (no API access required)."
+)
 app.add_typer(author_app, name="author")
 
 console = Console()
@@ -87,17 +91,32 @@ def list_artifacts(project: Path = typer.Argument(Path.cwd())) -> None:
         import yaml as _y
 
         spec = _y.safe_load(prior_yaml.read_text()) or {}
-        table.add_row("prior", str(spec.get("id", "?")), str(spec.get("version", "?")), str(prior_yaml.relative_to(project)))
+        table.add_row(
+            "prior",
+            str(spec.get("id", "?")),
+            str(spec.get("version", "?")),
+            str(prior_yaml.relative_to(project)),
+        )
     for model_yaml in (project / "models").glob("*.yaml"):
         import yaml as _y
 
         spec = _y.safe_load(model_yaml.read_text()) or {}
-        table.add_row("model", str(spec.get("id", "?")), str(spec.get("version", "?")), str(model_yaml.relative_to(project)))
+        table.add_row(
+            "model",
+            str(spec.get("id", "?")),
+            str(spec.get("version", "?")),
+            str(model_yaml.relative_to(project)),
+        )
     for eval_yaml in (project / "evals").glob("*.yaml"):
         import yaml as _y
 
         spec = _y.safe_load(eval_yaml.read_text()) or {}
-        table.add_row("eval", str(spec.get("id", "?")), str(spec.get("version", "?")), str(eval_yaml.relative_to(project)))
+        table.add_row(
+            "eval",
+            str(spec.get("id", "?")),
+            str(spec.get("version", "?")),
+            str(eval_yaml.relative_to(project)),
+        )
     for run_yaml in (project / "runs").glob("*.yaml"):
         import yaml as _y
 
@@ -127,7 +146,6 @@ def sample(
     Numpy arrays are converted to nested lists. Non-serialisable values become null.
     """
     import sys
-    import yaml as _y
 
     project = project.resolve()
     sys.path.insert(0, str(project))
@@ -171,6 +189,7 @@ def sample(
     def _to_jsonable(v):
         try:
             import numpy as np
+
             if isinstance(v, np.ndarray):
                 return v.tolist()
             if isinstance(v, (np.floating, np.integer)):
@@ -179,6 +198,7 @@ def sample(
             pass
         try:
             import torch
+
             if isinstance(v, torch.Tensor):
                 return v.detach().cpu().tolist()
         except ImportError:
@@ -211,12 +231,28 @@ def sample(
 
 @app.command()
 def push(
-    project_dir: Path = typer.Argument(..., help="Local project directory in canonical PriorStudio layout (priors/, models/, evals/, runs/)."),
-    project_id: str = typer.Option(..., "--project-id", help="Target project ID or slug in the PriorStudio API."),
-    api_url: str = typer.Option("http://localhost:3000/api", "--api-url", envvar="PRIORSTUDIO_API_URL"),
-    token: str = typer.Option(..., "--token", envvar="PRIORSTUDIO_TOKEN", help="API token (issue one at /api-tokens in the web UI)."),
-    only: str = typer.Option("priors,models", help="Comma-separated kinds to push: priors,models,evals,runs."),
-    skip_existing: bool = typer.Option(True, help="Skip artifacts whose slug already exists in the target project."),
+    project_dir: Path = typer.Argument(
+        ...,
+        help="Local project directory in canonical PriorStudio layout (priors/, models/, evals/, runs/).",
+    ),
+    project_id: str = typer.Option(
+        ..., "--project-id", help="Target project ID or slug in the PriorStudio API."
+    ),
+    api_url: str = typer.Option(
+        "http://localhost:3000/api", "--api-url", envvar="PRIORSTUDIO_API_URL"
+    ),
+    token: str = typer.Option(
+        ...,
+        "--token",
+        envvar="PRIORSTUDIO_TOKEN",
+        help="API token (issue one at /api-tokens in the web UI).",
+    ),
+    only: str = typer.Option(
+        "priors,models", help="Comma-separated kinds to push: priors,models,evals,runs."
+    ),
+    skip_existing: bool = typer.Option(
+        True, help="Skip artifacts whose slug already exists in the target project."
+    ),
 ) -> None:
     """Bulk-upload artifacts from a local project directory to PriorStudio.
 
@@ -267,11 +303,16 @@ def push(
                 "outputs": spec.get("outputs") or {"variables": []},
                 "citations": spec.get("citations") or [],
                 "code": code_path.read_text() if code_path.exists() else None,
-                "requirements": requirements_path.read_text() if requirements_path.exists() else None,
+                "requirements": requirements_path.read_text()
+                if requirements_path.exists()
+                else None,
                 "pythonVersion": spec.get("python_version") or spec.get("pythonVersion"),
             }
             r = requests.post(
-                f"{base}/projects/{resolved_id}/priors", headers=headers, json=body, timeout=30,
+                f"{base}/projects/{resolved_id}/priors",
+                headers=headers,
+                json=body,
+                timeout=30,
             )
 
             # Did we end up with a server-side prior to attach wheels to?
@@ -286,17 +327,24 @@ def push(
                     # Look up the existing prior so we can still attach/refresh wheels.
                     rg = requests.get(
                         f"{base}/projects/{resolved_id}/priors/{spec['id']}",
-                        headers=headers, timeout=10,
+                        headers=headers,
+                        timeout=10,
                     )
                     if rg.status_code == 200:
                         target_prior_id = rg.json()["id"]
-                        console.print(f"[yellow]⤳[/yellow] prior {spec['id']} already exists — skipping body, will refresh wheels")
+                        console.print(
+                            f"[yellow]⤳[/yellow] prior {spec['id']} already exists — skipping body, will refresh wheels"
+                        )
                         skipped += 1
                     else:
-                        console.print(f"[yellow]⤳[/yellow] prior {spec['id']} already exists — could not look up id ({rg.status_code}); skipping wheels too")
+                        console.print(
+                            f"[yellow]⤳[/yellow] prior {spec['id']} already exists — could not look up id ({rg.status_code}); skipping wheels too"
+                        )
                         skipped += 1
                 else:
-                    console.print(f"[red]✗[/red] prior {spec['id']} conflict; pass --no-skip-existing to fail loudly")
+                    console.print(
+                        f"[red]✗[/red] prior {spec['id']} conflict; pass --no-skip-existing to fail loudly"
+                    )
                     failed += 1
             else:
                 console.print(f"[red]✗[/red] prior {spec['id']}: {r.status_code} {r.text[:200]}")
@@ -304,7 +352,17 @@ def push(
 
             # Upload any wheels in the local wheels/ dir to whichever prior we resolved.
             if target_prior_id:
-                wheels = sorted([p for p in wheel_dir.glob("*") if p.suffix in (".whl",) or p.name.endswith(".tar.gz")]) if wheel_dir.is_dir() else []
+                wheels = (
+                    sorted(
+                        [
+                            p
+                            for p in wheel_dir.glob("*")
+                            if p.suffix in (".whl",) or p.name.endswith(".tar.gz")
+                        ]
+                    )
+                    if wheel_dir.is_dir()
+                    else []
+                )
                 for wheel_path in wheels:
                     with wheel_path.open("rb") as fh:
                         rw = requests.post(
@@ -316,7 +374,9 @@ def push(
                     if rw.status_code in (200, 201):
                         console.print(f"  [green]+[/green] wheel {wheel_path.name}")
                     else:
-                        console.print(f"  [red]✗[/red] wheel {wheel_path.name}: {rw.status_code} {rw.text[:160]}")
+                        console.print(
+                            f"  [red]✗[/red] wheel {wheel_path.name}: {rw.status_code} {rw.text[:160]}"
+                        )
 
     if "models" in kinds:
         for model_yaml in sorted((project_dir / "models").glob("*.yaml")):
@@ -337,7 +397,10 @@ def push(
                 "citations": spec.get("citations") or [],
             }
             r = requests.post(
-                f"{base}/projects/{resolved_id}/models", headers=headers, json=body, timeout=30,
+                f"{base}/projects/{resolved_id}/models",
+                headers=headers,
+                json=body,
+                timeout=30,
             )
             if r.status_code in (200, 201):
                 console.print(f"[green]✓[/green] model {spec['id']}")
@@ -347,7 +410,9 @@ def push(
                     console.print(f"[yellow]⤳[/yellow] model {spec['id']} already exists — skipped")
                     skipped += 1
                 else:
-                    console.print(f"[red]✗[/red] model {spec['id']} conflict; pass --no-skip-existing to fail loudly")
+                    console.print(
+                        f"[red]✗[/red] model {spec['id']} conflict; pass --no-skip-existing to fail loudly"
+                    )
                     failed += 1
             else:
                 console.print(f"[red]✗[/red] model {spec['id']}: {r.status_code} {r.text[:200]}")
@@ -360,7 +425,9 @@ def push(
 
 
 def _die_token() -> None:
-    console.print("[red]401 unauthorized.[/red] Issue an API token at the web UI's /api-tokens page, then export PRIORSTUDIO_TOKEN=ps_xxx")
+    console.print(
+        "[red]401 unauthorized.[/red] Issue an API token at the web UI's /api-tokens page, then export PRIORSTUDIO_TOKEN=ps_xxx"
+    )
     raise typer.Exit(code=1)
 
 
@@ -380,9 +447,13 @@ def author_wrap(
         help="Importable class, e.g. tcpfn.discovery.discovery_prior:CausalDiscoveryPrior",
     ),
     slug: str = typer.Option(..., help="Slug for the new PriorStudio prior."),
-    out: Path = typer.Option(Path.cwd(), help="Output project root (priors/<slug>/ will be created here)."),
+    out: Path = typer.Option(
+        Path.cwd(), help="Output project root (priors/<slug>/ will be created here)."
+    ),
     requires: list[str] = typer.Option(
-        [], "--requires", "-r",
+        [],
+        "--requires",
+        "-r",
         help="pip-installable lines for requirements.txt. Repeat the flag (-r tcpfn -r torch>=2.2).",
     ),
     sample_method: str = typer.Option(
@@ -390,7 +461,9 @@ def author_wrap(
         help="Method name on the class that produces samples (default: sample_batch).",
     ),
     name: str = typer.Option(None, help="Display name (default: derived from class name)."),
-    kind: str = typer.Option("custom", help="Prior kind: scm, tabular, temporal, temporal_causal, graph, custom."),
+    kind: str = typer.Option(
+        "custom", help="Prior kind: scm, tabular, temporal, temporal_causal, graph, custom."
+    ),
 ) -> None:
     """Generate a PriorStudio-format prior wrapping any Python class.
 
@@ -420,7 +493,9 @@ def author_wrap(
         module = importlib.import_module(module_path)
     except ImportError as e:
         err_console.print(f"[red]Could not import {module_path}:[/red] {e}")
-        err_console.print("[yellow]Hint:[/yellow] are you in the venv that has this package installed?")
+        err_console.print(
+            "[yellow]Hint:[/yellow] are you in the venv that has this package installed?"
+        )
         raise typer.Exit(code=1) from e
 
     cls = getattr(module, class_name, None)
@@ -436,13 +511,17 @@ def author_wrap(
     try:
         init_sig = inspect.signature(cls.__init__)
     except (TypeError, ValueError):
-        err_console.print(f"[yellow]Warning:[/yellow] could not introspect {class_name}.__init__; emitting empty parameters.")
+        err_console.print(
+            f"[yellow]Warning:[/yellow] could not introspect {class_name}.__init__; emitting empty parameters."
+        )
         init_params = []
     else:
         init_accepts_seed = "seed" in init_sig.parameters
         init_params = [
-            (p.name, p) for p in init_sig.parameters.values()
-            if p.name not in SKIP and p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+            (p.name, p)
+            for p in init_sig.parameters.values()
+            if p.name not in SKIP
+            and p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
         ]
 
     sample_method_name = sample_method
@@ -498,9 +577,7 @@ def author_wrap(
                 sample_batch_kwargs.append("seed=seed")
             if "n_context_units" in sb_params:
                 sample_batch_kwargs.append("n_context_units=10")
-                sample_batch_fixme = (
-                    "        # FIXME: n_context_units / n_query_units default to 10/5; tune for your task.\n"
-                )
+                sample_batch_fixme = "        # FIXME: n_context_units / n_query_units default to 10/5; tune for your task.\n"
             if "n_query_units" in sb_params:
                 sample_batch_kwargs.append("n_query_units=5")
         except (TypeError, ValueError):
@@ -585,7 +662,7 @@ class {wrapper_class}(Prior):
         word for word in [class_name.replace("Prior", ""), "Prior"] if word
     )
 
-    yaml_body = f'''id: {slug}
+    yaml_body = f"""id: {slug}
 name: {display_name}
 version: 0.1.0
 kind: {kind}
@@ -595,16 +672,16 @@ description: |
   output variables and tighten parameter ranges.
 
 parameters:
-'''
+"""
     for pname, entry in yaml_params.items():
         yaml_body += f"  {pname}:\n"
         for k, v in entry.items():
             if isinstance(v, str):
-                yaml_body += f"    {k}: \"{v}\"\n"
+                yaml_body += f'    {k}: "{v}"\n'
             else:
                 yaml_body += f"    {k}: {v}\n"
 
-    yaml_body += '''
+    yaml_body += """
 outputs:
   variables:
     # FIXME: fill in based on what the wrapped sample method returns.
@@ -613,11 +690,11 @@ outputs:
       description: Sample output from the wrapped class
 
 implementation: prior.py
-'''
+"""
     (prior_dir / "prior.yaml").write_text(yaml_body)
 
     # ── Generate prior.md ──
-    md = f'''# {display_name}
+    md = f"""# {display_name}
 
 Wrapper around `{module_path}:{class_name}`.
 
@@ -632,7 +709,7 @@ Wrapper around `{module_path}:{class_name}`.
 ## Why this prior exists
 
 (Edit this section to describe the pedagogical or research purpose.)
-'''
+"""
     (prior_dir / "prior.md").write_text(md)
 
     # ── requirements.txt ──
@@ -640,7 +717,9 @@ Wrapper around `{module_path}:{class_name}`.
         (prior_dir / "requirements.txt").write_text("\n".join(requires) + "\n")
 
     console.print(f"[green]✓[/green] Wrote {prior_dir}/")
-    console.print(f"  Files: prior.py, prior.yaml, prior.md{', requirements.txt' if requires else ''}")
+    console.print(
+        f"  Files: prior.py, prior.yaml, prior.md{', requirements.txt' if requires else ''}"
+    )
     console.print()
     console.print("[bold]Next:[/bold]")
     console.print(f"  1. Edit [cyan]{prior_dir}/prior.yaml[/cyan] — fill in outputs[].variables")
@@ -653,15 +732,14 @@ Wrapper around `{module_path}:{class_name}`.
 def run(
     manifest: Path = typer.Argument(..., help="Path to a run YAML."),
     project: Path = typer.Option(None, help="Project root (default: parent of runs/)."),
-    target: str = typer.Option(None, help=f"Override compute target. Available: {sorted(ADAPTERS)}"),
+    target: str = typer.Option(
+        None, help=f"Override compute target. Available: {sorted(ADAPTERS)}"
+    ),
 ) -> None:
     """Execute a run via the configured (or overridden) compute adapter."""
     manifest = manifest.resolve()
     if project is None:
-        if manifest.parent.name == "runs":
-            project = manifest.parent.parent
-        else:
-            project = Path.cwd()
+        project = manifest.parent.parent if manifest.parent.name == "runs" else Path.cwd()
     project = project.resolve()
 
     import yaml as _y
@@ -693,8 +771,14 @@ def run(
 @app.command()
 def predict(
     manifest: Path = typer.Argument(..., help="Path to a run YAML."),
-    checkpoint: Path = typer.Option(..., help="Path to the checkpoint directory (contains model.pt + topology.json)."),
-    input_json: Path = typer.Option(None, "--input", help="Path to a JSON file with the inference payload. Reads stdin if omitted."),
+    checkpoint: Path = typer.Option(
+        ..., help="Path to the checkpoint directory (contains model.pt + topology.json)."
+    ),
+    input_json: Path = typer.Option(
+        None,
+        "--input",
+        help="Path to a JSON file with the inference payload. Reads stdin if omitted.",
+    ),
     project: Path = typer.Option(None, help="Project root (default: parent of runs/)."),
 ) -> None:
     """Load a trained checkpoint and run inference.
@@ -722,14 +806,12 @@ def predict(
         project = manifest.parent.parent if manifest.parent.name == "runs" else Path.cwd()
     project = project.resolve()
 
-    payload_text = (
-        input_json.read_text() if input_json is not None else _sys.stdin.read()
-    )
+    payload_text = input_json.read_text() if input_json is not None else _sys.stdin.read()
     try:
         payload = _json.loads(payload_text)
     except _json.JSONDecodeError as e:
         console.print_json(_json.dumps({"error": f"invalid input JSON: {e}"}))
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
     # Lazy-import the inference module so the CLI's other commands
     # (init / validate / lint) don't pay torch's import cost.
@@ -737,7 +819,7 @@ def predict(
         from priorstudio_core.training.predict import run_inference
     except ImportError as e:
         console.print_json(_json.dumps({"error": f"predict module unavailable: {e}"}))
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
     try:
         out = run_inference(
@@ -747,10 +829,14 @@ def predict(
             payload=payload,
         )
     except Exception as e:
-        console.print_json(_json.dumps({
-            "error": f"{type(e).__name__}: {e}",
-        }))
-        raise typer.Exit(code=1)
+        console.print_json(
+            _json.dumps(
+                {
+                    "error": f"{type(e).__name__}: {e}",
+                }
+            )
+        )
+        raise typer.Exit(code=1) from None
 
     # Emit ONLY the JSON output on stdout so the API can parse it
     # cleanly. Anything else (progress, logs) should go on stderr.
@@ -769,7 +855,7 @@ def studio_build(
     except ImportError as e:
         console.print(f"[red]priorstudio-studio not installed:[/red] {e}")
         console.print("Install: pip install priorstudio-studio")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
     out_dir = build_site(project_root=project, out_dir=out)
     console.print(f"[green]Built site at[/green] {out_dir}")
 
@@ -785,7 +871,7 @@ def studio_serve(
         from priorstudio_studio.serve import serve_dir
     except ImportError as e:
         console.print(f"[red]priorstudio-studio not installed:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
     out_dir = build_site(project_root=project, out_dir=Path("_studio"))
     serve_dir(out_dir, port=port)
 

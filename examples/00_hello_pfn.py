@@ -17,7 +17,6 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-
 from priorstudio_core import Prior
 from priorstudio_core.registry import register_prior
 
@@ -52,7 +51,7 @@ def main() -> None:
     print("Sampled one task from the hello-linear prior:")
     print()
     print(f"  Latent line:  y = {task['a_true']:+.3f} · x + {task['b_true']:+.3f}")
-    print(f"  Noise model:  ε ~ N(0, 0.1)")
+    print("  Noise model:  ε ~ N(0, 0.1)")
     print()
     print("  x:", np.round(task["X"].ravel(), 3).tolist())
     print("  y:", np.round(task["y"], 3).tolist())

@@ -26,14 +26,12 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-
 from priorstudio_core import Model, ModelSpec, RunSpec
 from priorstudio_core.model import BlockConfig, OutputHead
 from priorstudio_core.prior import Prior, PriorSpec
 from priorstudio_core.registry import register_prior
 from priorstudio_core.run import ModelRef, PriorRef
 from priorstudio_core.training import train_pfn
-
 
 # ── 1. The prior ──────────────────────────────────────────────────────────
 
@@ -59,8 +57,9 @@ class TwoMoonsPrior(Prior):
         t0 = rng.uniform(0, np.pi, size=n0)
         t1 = rng.uniform(0, np.pi, size=n1)
         moon0 = np.stack([radius * np.cos(t0), radius * np.sin(t0)], axis=-1)
-        moon1 = np.stack([radius - radius * np.cos(t1),
-                          -radius * np.sin(t1) + 0.5 * radius], axis=-1)
+        moon1 = np.stack(
+            [radius - radius * np.cos(t1), -radius * np.sin(t1) + 0.5 * radius], axis=-1
+        )
 
         # Random rotation per task — forces the PFN to discover the
         # geometry from context rather than memorising a fixed orientation.
@@ -96,9 +95,15 @@ def build_model() -> Model:
         description="Two-layer tabular PFN classifier for binary 2-D inputs.",
         blocks=[
             BlockConfig(type="tabular_embedder", config={"d_model": 32}),
-            BlockConfig(type="transformer_encoder", config={
-                "d_model": 32, "n_heads": 2, "n_layers": 2, "dropout": 0.0,
-            }),
+            BlockConfig(
+                type="transformer_encoder",
+                config={
+                    "d_model": 32,
+                    "n_heads": 2,
+                    "n_layers": 2,
+                    "dropout": 0.0,
+                },
+            ),
             BlockConfig(type="scalar_head", config={"d_model": 32, "d_out": 1}),
         ],
         output_heads=[OutputHead(name="pred_logit", task="classification")],
@@ -119,10 +124,12 @@ def train(steps: int = 500) -> tuple[Model, dict[str, Any]]:
             "num_points": {"type": "int", "range": [60, 120]},
             "noise_scale": {"type": "float", "range": [0.05, 0.25]},
         },
-        outputs={"variables": [
-            {"name": "X", "type": "tensor", "shape": "(N, 2)"},
-            {"name": "labels", "type": "tensor", "shape": "(N,)"},
-        ]},
+        outputs={
+            "variables": [
+                {"name": "X", "type": "tensor", "shape": "(N, 2)"},
+                {"name": "labels", "type": "tensor", "shape": "(N,)"},
+            ]
+        },
     )
     prior = TwoMoonsPrior()
     prior.spec = prior_spec
@@ -173,12 +180,12 @@ def evaluate(model: Model, num_tasks: int = 50, num_points: int = 96) -> dict[st
 
         # PFN — feed the query x through the model, threshold at 0.5.
         with torch.no_grad():
-            inp = torch.from_numpy(X_query).float().unsqueeze(0)   # (1, n_query, 2)
+            inp = torch.from_numpy(X_query).float().unsqueeze(0)  # (1, n_query, 2)
             out = inp
             for _, mod in model.modules:
                 out = mod(out)
             logits = out.squeeze(0).squeeze(-1).cpu().numpy()
-            pfn_pred = (logits >= 0.0).astype(np.float32)            # logit ≥ 0 → P ≥ 0.5
+            pfn_pred = (logits >= 0.0).astype(np.float32)  # logit ≥ 0 → P ≥ 0.5
 
         # Majority baseline.
         maj_class = float(round(y_ctx.mean()))
@@ -187,16 +194,16 @@ def evaluate(model: Model, num_tasks: int = 50, num_points: int = 96) -> dict[st
         # Logistic-regression baseline (closed-form via numpy lstsq).
         logreg_pred = _logreg(X_ctx, y_ctx, X_query)
 
-        pfn_correct    += int(np.sum(pfn_pred    == y_query))
-        maj_correct    += int(np.sum(maj_pred    == y_query))
+        pfn_correct += int(np.sum(pfn_pred == y_query))
+        maj_correct += int(np.sum(maj_pred == y_query))
         logreg_correct += int(np.sum(logreg_pred == y_query))
-        total          += n_query
+        total += n_query
 
     return {
-        "pfn_acc":    pfn_correct    / total,
-        "maj_acc":    maj_correct    / total,
+        "pfn_acc": pfn_correct / total,
+        "maj_acc": maj_correct / total,
         "logreg_acc": logreg_correct / total,
-        "tasks":      num_tasks,
+        "tasks": num_tasks,
     }
 
 
@@ -204,7 +211,7 @@ def _logreg(X_ctx: np.ndarray, y_ctx: np.ndarray, X_q: np.ndarray) -> np.ndarray
     """Lightweight one-shot logistic regression: a few IRLS-ish gradient steps."""
     # Add bias column.
     Xc = np.concatenate([X_ctx, np.ones((X_ctx.shape[0], 1))], axis=1).astype(np.float64)
-    Xq = np.concatenate([X_q,   np.ones((X_q.shape[0], 1))],   axis=1).astype(np.float64)
+    Xq = np.concatenate([X_q, np.ones((X_q.shape[0], 1))], axis=1).astype(np.float64)
     w = np.zeros(Xc.shape[1])
     for _ in range(50):
         z = Xc @ w
@@ -223,9 +230,11 @@ def main() -> None:
     print()
     model, result = train(steps=500)
     print()
-    print(f"Training: status={result.get('status')!r}  "
-          f"final_loss={result.get('final_loss'):.4f}  "
-          f"wall_time={result.get('wall_time_s'):.1f}s")
+    print(
+        f"Training: status={result.get('status')!r}  "
+        f"final_loss={result.get('final_loss'):.4f}  "
+        f"wall_time={result.get('wall_time_s'):.1f}s"
+    )
     print()
 
     if result.get("status") != "ok":
@@ -236,27 +245,39 @@ def main() -> None:
     metrics = evaluate(model, num_tasks=50, num_points=96)
     print()
     print(f"  PFN accuracy            : {metrics['pfn_acc']:.3f}")
-    print(f"  Majority baseline       : {metrics['maj_acc']:.3f}    "
-          "(always predict the majority class — what an uninformed model does)")
-    print(f"  Logistic-regression     : {metrics['logreg_acc']:.3f}    "
-          "(closed-form linear classifier — limited because two-moons is non-linear)")
+    print(
+        f"  Majority baseline       : {metrics['maj_acc']:.3f}    "
+        "(always predict the majority class — what an uninformed model does)"
+    )
+    print(
+        f"  Logistic-regression     : {metrics['logreg_acc']:.3f}    "
+        "(closed-form linear classifier — limited because two-moons is non-linear)"
+    )
     print()
 
     if metrics["pfn_acc"] > metrics["maj_acc"]:
-        print(f"✓ PFN beats the majority baseline by {metrics['pfn_acc'] - metrics['maj_acc']:.3f} "
-              "absolute — it has learned to use the (x₁, x₂) coordinates.")
+        print(
+            f"✓ PFN beats the majority baseline by {metrics['pfn_acc'] - metrics['maj_acc']:.3f} "
+            "absolute — it has learned to use the (x₁, x₂) coordinates."
+        )
     else:
-        print("⚠ PFN does not beat the majority baseline — likely needs more training "
-              "steps or a deeper model.")
+        print(
+            "⚠ PFN does not beat the majority baseline — likely needs more training "
+            "steps or a deeper model."
+        )
 
     if metrics["pfn_acc"] > metrics["logreg_acc"]:
-        print(f"✓ PFN beats logistic regression by {metrics['pfn_acc'] - metrics['logreg_acc']:.3f} "
-              "absolute — encouraging signal that it's modelling the non-linear "
-              "moon geometry rather than just a linear decision boundary.")
+        print(
+            f"✓ PFN beats logistic regression by {metrics['pfn_acc'] - metrics['logreg_acc']:.3f} "
+            "absolute — encouraging signal that it's modelling the non-linear "
+            "moon geometry rather than just a linear decision boundary."
+        )
     else:
-        print(f"~ PFN matches/ slightly under logistic regression "
-              f"({metrics['pfn_acc']:.3f} vs {metrics['logreg_acc']:.3f}). At this scale "
-              "and step count, picking up the non-linearity often takes a deeper model.")
+        print(
+            f"~ PFN matches/ slightly under logistic regression "
+            f"({metrics['pfn_acc']:.3f} vs {metrics['logreg_acc']:.3f}). At this scale "
+            "and step count, picking up the non-linearity often takes a deeper model."
+        )
 
 
 if __name__ == "__main__":

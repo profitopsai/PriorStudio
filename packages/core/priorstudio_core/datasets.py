@@ -30,7 +30,6 @@ index (e.g. dependency was optional and not downloaded), `load()` raises
 from __future__ import annotations
 
 import json
-import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -55,9 +54,9 @@ class IndexedSplit:
 
 @dataclass
 class IndexedDataset:
-    key: str                 # e.g. "m4-monthly@1.0.0"
-    dir: Path                # absolute directory containing the files
-    filename: str            # main downloaded artifact filename
+    key: str  # e.g. "m4-monthly@1.0.0"
+    dir: Path  # absolute directory containing the files
+    filename: str  # main downloaded artifact filename
     sha256: str | None
     splits: list[IndexedSplit]
 
@@ -85,20 +84,20 @@ def load_index(project_root: Path | str) -> dict[str, IndexedDataset]:
         try:
             data: Any = json.loads(raw)
         except Exception as e:
-            raise DatasetUnavailable(f"Could not parse {json_path}: {e}")
+            raise DatasetUnavailable(f"Could not parse {json_path}: {e}") from e
     elif yaml_path.exists():
         raw = yaml_path.read_text(encoding="utf-8")
         try:
             import yaml  # type: ignore
 
             data = yaml.safe_load(raw)
-        except ImportError:
+        except ImportError as e:
             raise DatasetUnavailable(
                 f"{yaml_path} requires PyYAML. Install pyyaml or have the API "
                 "emit .datasets/index.json instead."
-            )
+            ) from e
         except Exception as e:
-            raise DatasetUnavailable(f"Could not parse {yaml_path}: {e}")
+            raise DatasetUnavailable(f"Could not parse {yaml_path}: {e}") from e
     else:
         return {}
 
@@ -145,7 +144,7 @@ class RegistryDatasetLoader:
         self._index = index
 
     @classmethod
-    def from_project(cls, project_root: Path | str) -> "RegistryDatasetLoader":
+    def from_project(cls, project_root: Path | str) -> RegistryDatasetLoader:
         return cls(load_index(project_root))
 
     @property
@@ -218,8 +217,8 @@ class RegistryDatasetLoader:
 
 __all__ = [
     "DatasetUnavailable",
-    "IndexedSplit",
     "IndexedDataset",
+    "IndexedSplit",
     "RegistryDatasetLoader",
     "load_index",
     "parse_source",
