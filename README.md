@@ -20,7 +20,7 @@ synthetic data generator           ↓
 
 **[`priors/`](priors/)** — **13 reference priors**, each a self-contained `prior.py` + `prior.yaml` + `README.md`. Categories: regression, classification, time series, probabilistic, causal discovery. Forkable — copy a prior directory into your project, edit the Python, train.
 
-**[`packages/core/`](packages/core/)** (`priorstudio-core` on PyPI) — the runtime: `Prior` interface, block registry (`tabular_embedder`, `transformer_encoder`, `scalar_head`, `discovery_head`, `causal_attention_pool`, `estimation_head`), training loop, dataset registry, eval scorers.
+**[`packages/core/`](packages/core/)** (`priorstudio-core` on PyPI) — the runtime: `Prior` interface, block registry (16 built-in blocks across senses / reasoning / aggregation / temporal encoding / skills — see [The block registry](#the-block-registry) below), training loop, dataset registry, eval scorers.
 
 **[`packages/cli/`](packages/cli/)** (`priorstudio` on PyPI) — the command-line interface: `validate`, `lint`, `sample`, `run`, `predict`, `export`.
 
@@ -146,7 +146,26 @@ Every artifact is YAML-spec plus a Python implementation. Runs are reproducible 
 
 ## The block registry
 
-Architectures are composed from registered blocks. Today's library, all in `priorstudio_core/blocks/`:
+Architectures are composed from registered blocks. 16 ship in [`priorstudio_core/blocks/`](packages/core/priorstudio_core/blocks/):
+
+| Category | Block | What it does |
+|---|---|---|
+| **Senses** | `tabular_embedder` | Linear projection from feature space to `d_model`. LazyLinear by default. |
+| **Reasoning** | `transformer_encoder` | Standard pre-norm transformer encoder. Self-attention over the full sequence. |
+| | `cross_attention_layer` | One cross-attention layer: query tokens attend to context tokens only (never to each other). RMSNorm + SiLU-gated FFN. |
+| | `cross_attention_encoder` | Stack of `cross_attention_layer`. The thinking core of any in-context predictor where queries should be independent given the context. |
+| | `rms_norm` | Root-mean-square layer norm. Cheaper than LayerNorm, no learnable bias. |
+| | `mlp` | Multi-layer perceptron. Used as head projection + general-purpose nonlinear projection. |
+| **Aggregation** | `causal_attention_pool` | Attention-weighted pool to one token per task. |
+| **Temporal** | `short_range_time_encoding` | Learnable per-step `delta_t` + phase + elapsed encoding. v2.1 default. |
+| | `long_range_time_encoding` | Log-spaced sinusoidal + learnable. Handles 12-hour+ industrial lags (v2.2). |
+| **Graph** | `temporal_variable_encoder` | Per-variable temporal attention → one rich rep per variable. |
+| | `cross_variable_attention` | Attention across variables. Captures inter-variable structure. |
+| | `graph_posterior_decoder` | Pairwise edge prediction from variable reps → (B, V, V, lags+1). |
+| **Skills** | `scalar_head` | Linear projection to a scalar (or `d_out`) per position. Regression / binary classification. |
+| | `discovery_head` | Adjacency matrix over D variables. Output: (B, D, D) logits. |
+| | `estimation_head` | One scalar treatment effect per (treatment, outcome) pair. |
+| | `causal_judgment_head` | 8-task structured head: total/direct effect, null prob, confounding, identifiability, mediation, regime. The TCPFN v2/v3 head. |
 
 ```yaml
 # A standard tabular-PFN model
