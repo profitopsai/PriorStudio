@@ -43,12 +43,8 @@ class MLPBlock:
             raise ImportError("mlp requires torch.") from e
 
         if activation not in _ACTIVATIONS:
-            raise ValueError(
-                f"Unknown mlp activation {activation!r}; known: {_ACTIVATIONS}"
-            )
-        act_cls = {"gelu": nn.GELU, "relu": nn.ReLU, "silu": nn.SiLU, "tanh": nn.Tanh}[
-            activation
-        ]
+            raise ValueError(f"Unknown mlp activation {activation!r}; known: {_ACTIVATIONS}")
+        act_cls = {"gelu": nn.GELU, "relu": nn.ReLU, "silu": nn.SiLU, "tanh": nn.Tanh}[activation]
 
         hidden = d_hidden if d_hidden is not None else (4 * d_in if d_in else 512)
         out_dim = d_out if d_out is not None else hidden

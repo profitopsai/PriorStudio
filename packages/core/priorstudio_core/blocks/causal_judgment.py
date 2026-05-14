@@ -50,10 +50,7 @@ def _build_causal_judgment_head():
 
         def forward(self, hidden):
             # hidden: (B, query_len, d_model) → pool over query tokens
-            if hidden.dim() == 3:
-                h = hidden.mean(dim=1)
-            else:
-                h = hidden
+            h = hidden.mean(dim=1) if hidden.dim() == 3 else hidden
             shared = self.shared(h)
             total = self.total_effect_head(shared).squeeze(-1)
             direct = self.direct_effect_head(shared).squeeze(-1)

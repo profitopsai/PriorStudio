@@ -25,13 +25,11 @@ of the TCPFN model wrapper that lives downstream.
 from __future__ import annotations
 
 import math
-from typing import Any
 
 from ..registry import register_block
 
 
 def _build_short_range():
-    import torch
     import torch.nn as nn
 
     class ShortRangeEncoding(nn.Module):
@@ -70,9 +68,7 @@ def _build_long_range():
             self.phase_embed = nn.Embedding(2, d_model)
             self.elapsed_proj = nn.Linear(1, d_model, bias=False)
 
-            freqs = torch.exp(
-                torch.linspace(math.log(1.0), math.log(1.0 / 10000), d_model // 2)
-            )
+            freqs = torch.exp(torch.linspace(math.log(1.0), math.log(1.0 / 10000), d_model // 2))
             self.register_buffer("freqs", freqs)
 
             nn.init.normal_(self.relative_embed.weight, std=0.02)

@@ -178,9 +178,7 @@ class CrossVariableAttentionBlock:
             raise ImportError("cross_variable_attention requires torch.") from e
 
         self.d_model = d_model
-        self.module = CrossVariableAttention(
-            d_model=d_model, n_heads=n_heads, n_layers=n_layers
-        )
+        self.module = CrossVariableAttention(d_model=d_model, n_heads=n_heads, n_layers=n_layers)
 
     def __call__(self, x: Any) -> Any:
         return self.module(x)

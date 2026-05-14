@@ -36,7 +36,7 @@ def _build_layer_class():
     """
     import torch
     import torch.nn as nn
-    import torch.nn.functional as F
+    import torch.nn.functional as F  # noqa: N812 — F is the canonical alias for torch.nn.functional
 
     class RMSNorm(nn.Module):
         def __init__(self, dim: int, eps: float = 1e-6):

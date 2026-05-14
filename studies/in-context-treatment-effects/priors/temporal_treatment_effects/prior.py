@@ -35,10 +35,14 @@ def _generate_effect_shape(
     if effect_idx == 0:  # immediate
         return torch.ones(T_post, device=device)
     if effect_idx == 1:  # gradual
-        tau = torch.empty(1, device=device).uniform_(2.0, max(3.0, T_post / 2), generator=rng).item()
+        tau = (
+            torch.empty(1, device=device).uniform_(2.0, max(3.0, T_post / 2), generator=rng).item()
+        )
         return 1.0 - torch.exp(-t / tau)
     if effect_idx == 2:  # decay
-        tau = torch.empty(1, device=device).uniform_(2.0, max(3.0, T_post / 2), generator=rng).item()
+        tau = (
+            torch.empty(1, device=device).uniform_(2.0, max(3.0, T_post / 2), generator=rng).item()
+        )
         return torch.exp(-t / tau)
     if effect_idx == 3:  # permanent
         ramp = max(1, T_post // 4)
@@ -100,9 +104,15 @@ class _TemporalTreatmentEffectsCore:
         rng.manual_seed(seed if seed is not None else self.seed)
 
         N = n_context_units + n_query_units
-        D = torch.randint(self.min_features, self.max_features + 1, (1,), generator=rng, device=dev).item()
-        T_pre = torch.randint(self.min_T_pre, self.max_T_pre + 1, (1,), generator=rng, device=dev).item()
-        T_post = torch.randint(self.min_T_post, self.max_T_post + 1, (1,), generator=rng, device=dev).item()
+        D = torch.randint(
+            self.min_features, self.max_features + 1, (1,), generator=rng, device=dev
+        ).item()
+        T_pre = torch.randint(
+            self.min_T_pre, self.max_T_pre + 1, (1,), generator=rng, device=dev
+        ).item()
+        T_post = torch.randint(
+            self.min_T_post, self.max_T_post + 1, (1,), generator=rng, device=dev
+        ).item()
         T_total = T_pre + T_post
         ar_order = torch.randint(1, 6, (1,), generator=rng, device=dev).item()
 
@@ -136,7 +146,9 @@ class _TemporalTreatmentEffectsCore:
         w_effect = torch.randn(D, device=dev, generator=rng)
         effect_magnitude = X @ w_effect
         y_std = Y_cf0[:, :T_pre].std().clamp(min=1e-8)
-        effect_magnitude = effect_magnitude / effect_magnitude.abs().std().clamp(min=1e-8) * y_std * 0.5
+        effect_magnitude = (
+            effect_magnitude / effect_magnitude.abs().std().clamp(min=1e-8) * y_std * 0.5
+        )
 
         true_cate = effect_magnitude.unsqueeze(1) * effect_shape.unsqueeze(0)
 
@@ -176,7 +188,9 @@ class _TemporalTreatmentEffectsCore:
             ctx_features[:, :, M * lag] = T_ctx.unsqueeze(1) * shifted_mask.unsqueeze(0)
 
         D_eff = min(D, self.max_num_features - treatment_slots)
-        ctx_features[:, :, treatment_slots:treatment_slots + D_eff] = X_ctx[:, :D_eff].unsqueeze(1)
+        ctx_features[:, :, treatment_slots : treatment_slots + D_eff] = X_ctx[:, :D_eff].unsqueeze(
+            1
+        )
 
         ctx_features = ctx_features.reshape(n_ctx * T_total, self.max_num_features)
         ctx_outcomes = Y_ctx.reshape(n_ctx * T_total)
@@ -196,7 +210,9 @@ class _TemporalTreatmentEffectsCore:
                 qry_features[:, lag:, M * lag] = 1.0
 
         D_eff = min(D, self.max_num_features - treatment_slots)
-        qry_features[:, :, treatment_slots:treatment_slots + D_eff] = X_qry[:, :D_eff].unsqueeze(1)
+        qry_features[:, :, treatment_slots : treatment_slots + D_eff] = X_qry[:, :D_eff].unsqueeze(
+            1
+        )
 
         qry_features = qry_features.reshape(n_qry * T_post, self.max_num_features)
         qry_delta_t = post_offsets.repeat(n_qry)
